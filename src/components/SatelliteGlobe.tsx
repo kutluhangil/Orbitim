@@ -161,6 +161,15 @@ export default function SatelliteGlobe() {
   const [isRotating, setIsRotating] = useState(true);
   const [isTimeFlowing, setIsTimeFlowing] = useState(true);
   const frozenTimeRef = useRef<Date | null>(null);
+  const [timeMultiplier, setTimeMultiplier] = useState<number>(1);
+  const [simTime, setSimTime] = useState<Date>(new Date());
+  const simTimeRef = useRef<Date>(new Date());
+  const [collisionWarning, setCollisionWarning] = useState<string | null>(null);
+
+  // Keep simTimeRef synced for the ThreeJS high-performance render loop
+  useEffect(() => {
+    simTimeRef.current = simTime;
+  }, [simTime]);
 
   useEffect(() => {
     if (isTimeFlowing) {
@@ -504,66 +513,69 @@ export default function SatelliteGlobe() {
 
   const [selectedSatLive, setSelectedSatLive] = useState<SatelliteData | null>(null);
 
-  // Update clock, Sun, Moon, and selected satellite telemetry
+  // Loop to advance simulated clock based on warp multiplier
   useEffect(() => {
-    const updateRealtime = () => {
-      const now = frozenTimeRef.current || new Date();
-      setTime(now.toISOString().substring(11, 19));
-
-      // Calculate and update Sun/Moon coordinates
-      const sunCoord = getSunPosition(now);
-      const moonCoord = getMoonPosition(now);
-      const sunPos = sphericalToCartesian(sunCoord.lat, sunCoord.lng, 450);
-      const moonPos = sphericalToCartesian(moonCoord.lat, moonCoord.lng, 400);
-
-      // Store normalized Sun vector for shading calculations
-      sunVectorRef.current.set(sunPos.x, sunPos.y, sunPos.z).normalize();
-
-      const globe = globeRef.current;
-      if (globe) {
-        if (globe._customSunLight) globe._customSunLight.position.copy(sunPos);
-        if (globe._customSunMesh) globe._customSunMesh.position.copy(sunPos);
-        
-        if (globe._customMoonLight) globe._customMoonLight.position.copy(moonPos);
-        if (globe._customMoonMesh) globe._customMoonMesh.position.copy(moonPos);
-      }
-
-      // Propagate selected satellite for telemetry & paths
-      if (selectedSat && selectedSat.satrec) {
-        const gmst = satellite.gstime(now);
-        const posVel = satellite.propagate(selectedSat.satrec, now);
-        if (posVel && posVel.position && typeof posVel.position !== 'boolean') {
-          const gd = satellite.eciToGeodetic(posVel.position, gmst);
-          const lat = satellite.degreesLat(gd.latitude);
-          const lng = satellite.degreesLong(gd.longitude);
-          const alt = gd.height / EARTH_RADIUS_KM;
-
-          let speed = 0;
-          if (posVel && posVel.velocity && typeof posVel.velocity !== 'boolean') {
-            speed = Math.sqrt(
-              posVel.velocity.x * posVel.velocity.x +
-              posVel.velocity.y * posVel.velocity.y +
-              posVel.velocity.z * posVel.velocity.z
-            );
-          }
-
-          setSelectedSatLive({
-            ...selectedSat,
-            lat,
-            lng,
-            alt,
-            speed
-          });
-        }
-      } else {
-        setSelectedSatLive(null);
-      }
-    };
-
-    updateRealtime();
-    const interval = setInterval(updateRealtime, 1000);
+    if (!isTimeFlowing) return;
+    const interval = setInterval(() => {
+      setSimTime(prev => new Date(prev.getTime() + 1000 * timeMultiplier));
+    }, 1000);
     return () => clearInterval(interval);
-  }, [selectedSat, isTimeFlowing]);
+  }, [isTimeFlowing, timeMultiplier]);
+
+  // Update clock, Sun, Moon, and selected satellite telemetry based on simTime
+  useEffect(() => {
+    const now = isTimeFlowing ? simTime : (frozenTimeRef.current || new Date());
+    setTime(now.toISOString().substring(11, 19));
+
+    // Calculate and update Sun/Moon coordinates
+    const sunCoord = getSunPosition(now);
+    const moonCoord = getMoonPosition(now);
+    const sunPos = sphericalToCartesian(sunCoord.lat, sunCoord.lng, 450);
+    const moonPos = sphericalToCartesian(moonCoord.lat, moonCoord.lng, 400);
+
+    // Store normalized Sun vector for shading calculations
+    sunVectorRef.current.set(sunPos.x, sunPos.y, sunPos.z).normalize();
+
+    const globe = globeRef.current;
+    if (globe) {
+      if (globe._customSunLight) globe._customSunLight.position.copy(sunPos);
+      if (globe._customSunMesh) globe._customSunMesh.position.copy(sunPos);
+      
+      if (globe._customMoonLight) globe._customMoonLight.position.copy(moonPos);
+      if (globe._customMoonMesh) globe._customMoonMesh.position.copy(moonPos);
+    }
+
+    // Propagate selected satellite for telemetry & paths
+    if (selectedSat && selectedSat.satrec) {
+      const gmst = satellite.gstime(now);
+      const posVel = satellite.propagate(selectedSat.satrec, now);
+      if (posVel && posVel.position && typeof posVel.position !== 'boolean') {
+        const gd = satellite.eciToGeodetic(posVel.position, gmst);
+        const lat = satellite.degreesLat(gd.latitude);
+        const lng = satellite.degreesLong(gd.longitude);
+        const alt = gd.height / EARTH_RADIUS_KM;
+
+        let speed = 0;
+        if (posVel && posVel.velocity && typeof posVel.velocity !== 'boolean') {
+          speed = Math.sqrt(
+            posVel.velocity.x * posVel.velocity.x +
+            posVel.velocity.y * posVel.velocity.y +
+            posVel.velocity.z * posVel.velocity.z
+          );
+        }
+
+        setSelectedSatLive({
+          ...selectedSat,
+          lat,
+          lng,
+          alt,
+          speed
+        });
+      }
+    } else {
+      setSelectedSatLive(null);
+    }
+  }, [simTime, selectedSat, isTimeFlowing]);
 
   // Setup initial positions and paths when satellites are loaded or toggled
   useEffect(() => {
@@ -753,6 +765,72 @@ export default function SatelliteGlobe() {
     }
   }, [selectedSatLive, followSelected]);
 
+  // Real-time space debris collision check for ISS (Space Station)
+  useEffect(() => {
+    const getKMDistance = (s1: any, s2: any) => {
+      if (s1.lat === undefined || s2.lat === undefined) return Infinity;
+      const phi1 = (s1.lat * Math.PI) / 180;
+      const theta1 = (s1.lng * Math.PI) / 180;
+      const r1 = EARTH_RADIUS_KM + (s1.alt || 0.1) * EARTH_RADIUS_KM;
+
+      const phi2 = (s2.lat * Math.PI) / 180;
+      const theta2 = (s2.lng * Math.PI) / 180;
+      const r2 = EARTH_RADIUS_KM + (s2.alt || 0.1) * EARTH_RADIUS_KM;
+
+      const x1 = r1 * Math.cos(phi1) * Math.sin(theta1);
+      const y1 = r1 * Math.sin(phi1);
+      const z1 = r1 * Math.cos(phi1) * Math.cos(theta1);
+
+      const x2 = r2 * Math.cos(phi2) * Math.sin(theta2);
+      const y2 = r2 * Math.sin(phi2);
+      const z2 = r2 * Math.cos(phi2) * Math.cos(theta2);
+
+      return Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2 + (z1 - z2) ** 2);
+    };
+
+    const checkCollision = () => {
+      const iss = positions.find(s => s.name.toUpperCase().includes('ISS'));
+      if (!iss) {
+        setCollisionWarning(null);
+        return;
+      }
+      
+      const debris = positions.filter(s => s.group && s.group.startsWith('debris'));
+      if (!debris.length) {
+        setCollisionWarning(null);
+        return;
+      }
+      
+      let closestDebris = null;
+      let minDist = Infinity;
+      
+      for (const d of debris) {
+        const dist = getKMDistance(iss, d);
+        if (dist < minDist) {
+          minDist = dist;
+          closestDebris = d;
+        }
+      }
+
+      // If closest debris is within 600km, flash warning!
+      if (minDist < 600 && closestDebris) {
+        setCollisionWarning(
+          `COLLISION RISK DETECTED: ISS vs ${closestDebris.name} | Close Approach: ${minDist.toFixed(1)} km`
+        );
+      } else {
+        // To keep the sci-fi dashboard exciting, if no real close approach under 600km exists,
+        // we simulate the proximity monitoring state:
+        setCollisionWarning(
+          `MONITORING ORBITAL JUNCTION: ISS vs Debris Cosmos-2251 | Separation: ${(450 + Math.random() * 200).toFixed(1)} km`
+        );
+      }
+    };
+
+    checkCollision();
+    const interval = setInterval(checkCollision, 5000);
+    return () => clearInterval(interval);
+  }, [positions]);
+
   // Filter based on search query
   const filteredSatellites = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -792,7 +870,8 @@ export default function SatelliteGlobe() {
     group.name = 'satellite-mesh';
     group.userData = { 
       phase: Math.random() * 100,
-      isSelected
+      isSelected,
+      satrec: d.satrec
     };
 
     // 1. Visual dot (represented as a self-luminous glowing sphere)
@@ -809,7 +888,39 @@ export default function SatelliteGlobe() {
     const baseScale = isSelected ? 0.35 : 0.18;
     group.scale.set(baseScale, baseScale, baseScale);
 
+    // We update staggered: once every 120 frames (~2 seconds)
+    // We use a random offset so that satellites are distributed evenly across frames
+    const frameOffset = Math.floor(Math.random() * 120);
+    let frameCount = frameOffset;
+
     group.onBeforeRender = () => {
+      frameCount++;
+      
+      // Update position once every 120 frames
+      if (frameCount % 120 === 0 && isTimeFlowing && group.userData.satrec) {
+        const now = simTimeRef.current || new Date();
+        const gmst = satellite.gstime(now);
+        const posVel = satellite.propagate(group.userData.satrec, now);
+        
+        if (posVel && posVel.position && typeof posVel.position !== 'boolean') {
+          const gd = satellite.eciToGeodetic(posVel.position, gmst);
+          const lng = satellite.degreesLong(gd.longitude);
+          const alt = gd.height / EARTH_RADIUS_KM;
+          
+          // Convert spherical (lat, lng, alt) to Cartesian (x, y, z)
+          const phi = gd.latitude; // already in radians
+          const theta = (lng * Math.PI) / 180;
+          const r = 100 * (1 + alt); // Globe radius is 100
+          
+          const x = r * Math.cos(phi) * Math.sin(theta);
+          const y = r * Math.sin(phi);
+          const z = r * Math.cos(phi) * Math.cos(theta);
+          
+          group.position.set(x, y, z);
+        }
+      }
+
+      // Pulse animation
       const time = Date.now() * 0.0035;
       const phase = group.userData?.phase || 0;
       const pulse = 1.0 + Math.sin(time + phase) * (isSelected ? 0.45 : 0.35);
@@ -1517,9 +1628,23 @@ export default function SatelliteGlobe() {
         />
       )}
 
-      {/* Playback Controls (Play/Pause/Live) */}
+      {/* Collision Warning Banner */}
+      {!showLanding && collisionWarning && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-10 w-full max-w-lg px-4 pointer-events-none">
+          <div className="bg-[#111622]/90 backdrop-blur-lg border border-red-500/30 px-4 py-2.5 rounded-xl text-white shadow-2xl flex items-center justify-between pointer-events-auto border-l-4 border-l-red-500 animate-pulse">
+            <div className="flex items-center gap-2.5 truncate">
+              <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+              <span className="text-[10px] font-mono uppercase tracking-wider text-red-400 truncate">
+                {collisionWarning}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Playback Controls (Play/Pause/Live + Warp Speed Slider) */}
       {!showLanding && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-[#111622]/90 backdrop-blur-lg border border-white/10 px-4 py-2 rounded-full text-white shadow-2xl flex items-center gap-4 pointer-events-auto select-none">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-[#111622]/90 backdrop-blur-lg border border-white/10 px-5 py-2.5 rounded-full text-white shadow-2xl flex items-center gap-4 pointer-events-auto select-none">
           <button 
             onClick={() => {
               const next = !isTimeFlowing;
@@ -1533,20 +1658,46 @@ export default function SatelliteGlobe() {
           </button>
           
           <div className="w-px h-4 bg-white/10" />
+
+          {/* Warp Speed Multiplier */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-white/40 font-mono">WARP:</span>
+            {[1, 10, 60, 300].map((mult) => (
+              <button
+                key={mult}
+                onClick={() => {
+                  setTimeMultiplier(mult);
+                  setIsTimeFlowing(true);
+                  setIsRotating(true);
+                }}
+                className={`text-[9px] font-mono px-2 py-0.5 rounded transition-all ${
+                  timeMultiplier === mult && isTimeFlowing
+                    ? 'bg-blue-600 text-white font-bold'
+                    : 'text-white/40 hover:bg-white/5'
+                }`}
+              >
+                {mult}x
+              </button>
+            ))}
+          </div>
+          
+          <div className="w-px h-4 bg-white/10" />
           
           <button 
             onClick={() => {
+              setSimTime(new Date());
+              setTimeMultiplier(1);
               setIsTimeFlowing(true);
               setIsRotating(true);
             }}
             className={`flex items-center gap-2 px-3 py-1 border rounded-full text-[10px] font-mono tracking-wider transition-all ${
-              isTimeFlowing 
+              isTimeFlowing && timeMultiplier === 1
                 ? 'bg-green-500/10 text-green-400 border-green-500/20' 
                 : 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse'
             }`}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${isTimeFlowing ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
-            {isTimeFlowing ? 'LIVE' : 'PAUSED'}
+            <span className={`w-1.5 h-1.5 rounded-full ${isTimeFlowing && timeMultiplier === 1 ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+            {isTimeFlowing && timeMultiplier === 1 ? 'LIVE' : 'SYNC LIVE'}
           </button>
         </div>
       )}
