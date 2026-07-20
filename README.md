@@ -1,5 +1,9 @@
 # 📡 Orbitim 3D - Gerçek Zamanlı Uydu ve Telemetri Simülatörü
 
+<p align="center">
+  <img src="./public/screenshots/orbitim_logo.png" alt="Orbitim Logo" width="300" />
+</p>
+
 [![Live Demo](https://img.shields.io/badge/Live-Demo-blue.svg?style=for-the-badge&logo=vercel)](https://orbitim-3d.vercel.app)
 
 Orbitim 3D, Dünya yörüngesindeki yapay uydu kabuklarını (özellikle Starlink takımyıldızını) gerçek zamanlı TLE (Two-Line Element) verilerini kullanarak 3 boyutlu ortamda simüle eden ve takip eden siber-estetik bir telemetri istasyonudur.
