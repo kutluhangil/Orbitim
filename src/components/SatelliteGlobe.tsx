@@ -22,52 +22,7 @@ const GROUPS = [
   { id: 'geo', name: 'Other Active', count: 4425, color: '#64748b' }
 ];
 
-// Helper function to merge multiple buffer geometries into a single mesh for 60 FPS rendering
-function mergeBufferGeometries(geometries: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  const mergedGeometry = new THREE.BufferGeometry();
-  
-  let totalVertices = 0;
-  let totalIndices = 0;
-  
-  for (const g of geometries) {
-    totalVertices += g.attributes.position.count;
-    if (g.index) {
-      totalIndices += g.index.count;
-    }
-  }
-  
-  const positions = new Float32Array(totalVertices * 3);
-  const indices = new Uint32Array(totalIndices);
-  
-  let vertexOffset = 0;
-  let indexOffset = 0;
-  
-  for (const g of geometries) {
-    const posAttr = g.attributes.position;
-    // Copy positions
-    for (let i = 0; i < posAttr.count; i++) {
-      positions[(vertexOffset + i) * 3] = posAttr.getX(i);
-      positions[(vertexOffset + i) * 3 + 1] = posAttr.getY(i);
-      positions[(vertexOffset + i) * 3 + 2] = posAttr.getZ(i);
-    }
-    
-    // Copy indices
-    if (g.index) {
-      const indAttr = g.index;
-      for (let i = 0; i < indAttr.count; i++) {
-        indices[indexOffset + i] = indAttr.getX(i) + vertexOffset;
-      }
-      indexOffset += indAttr.count;
-    }
-    
-    vertexOffset += posAttr.count;
-  }
-  
-  mergedGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  mergedGeometry.setIndex(new THREE.BufferAttribute(indices, 1));
-  
-  return mergedGeometry;
-}
+
 
 // Pre-allocate custom 3D geometries for selected detailed models
 const starlinkBodyGeo = new THREE.BoxGeometry(0.8, 0.1, 1.2);
@@ -91,49 +46,13 @@ const stationPanelMat = new THREE.MeshBasicMaterial({ color: '#fbbf24', transpar
 const gpsPanelMat = new THREE.MeshBasicMaterial({ color: '#ef4444', transparent: true, opacity: 0.5, wireframe: true });
 const defaultPanelMat = new THREE.MeshBasicMaterial({ color: '#60a5fa', transparent: true, opacity: 0.5, wireframe: true });
 
-// Pre-build realistic merged geometries for standard (unselected) satellites
-const makeStarlinkGeometry = () => {
-  const bodyGeo = new THREE.BoxGeometry(0.5, 0.08, 0.7);
-  const panelGeo = new THREE.BoxGeometry(1.6, 0.01, 0.5);
-  panelGeo.translate(1.05, 0, 0); // Side panel wing
-  const connectorGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.3, 4);
-  connectorGeo.rotateZ(Math.PI / 2);
-  connectorGeo.translate(0.35, 0, 0);
-  return mergeBufferGeometries([bodyGeo, connectorGeo, panelGeo]);
-};
+// All standard (unselected) satellites are represented as clean glowing sphere dots to maximize FPS and match siber aesthetic
+const dotGeometry = new THREE.SphereGeometry(0.35, 5, 5);
 
-const makeStationGeometry = () => {
-  const bodyGeo = new THREE.CylinderGeometry(0.3, 0.3, 2.6, 6);
-  bodyGeo.rotateZ(Math.PI / 2);
-  const leftPanelGeo = new THREE.BoxGeometry(1.2, 0.01, 2.0);
-  leftPanelGeo.translate(-1.9, 0, 0);
-  const rightPanelGeo = new THREE.BoxGeometry(1.2, 0.01, 2.0);
-  rightPanelGeo.translate(1.9, 0, 0);
-  return mergeBufferGeometries([bodyGeo, leftPanelGeo, rightPanelGeo]);
-};
-
-const makeGpsGeometry = () => {
-  const bodyGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7);
-  const leftPanelGeo = new THREE.BoxGeometry(1.4, 0.01, 0.5);
-  leftPanelGeo.translate(-1.15, 0, 0);
-  const rightPanelGeo = new THREE.BoxGeometry(1.4, 0.01, 0.5);
-  rightPanelGeo.translate(1.15, 0, 0);
-  return mergeBufferGeometries([bodyGeo, leftPanelGeo, rightPanelGeo]);
-};
-
-const makeDefaultGeometry = () => {
-  const bodyGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-  const leftPanelGeo = new THREE.BoxGeometry(0.8, 0.01, 0.3);
-  leftPanelGeo.translate(-0.7, 0, 0);
-  const rightPanelGeo = new THREE.BoxGeometry(0.8, 0.01, 0.3);
-  rightPanelGeo.translate(0.7, 0, 0);
-  return mergeBufferGeometries([bodyGeo, leftPanelGeo, rightPanelGeo]);
-};
-
-const simpleStarlinkGeo = makeStarlinkGeometry();
-const simpleStationGeo = makeStationGeometry();
-const simpleGpsGeo = makeGpsGeometry();
-const simpleDefaultGeo = makeDefaultGeometry();
+const simpleStarlinkGeo = dotGeometry;
+const simpleStationGeo = dotGeometry;
+const simpleGpsGeo = dotGeometry;
+const simpleDefaultGeo = dotGeometry;
 
 // Shared material cache to avoid creating thousands of duplicate WebGL materials
 const materialCache: Record<string, THREE.MeshBasicMaterial> = {};
