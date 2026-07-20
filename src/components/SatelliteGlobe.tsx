@@ -204,6 +204,7 @@ export default function SatelliteGlobe() {
   const globeRef = useRef<any>(null);
   const [activeGroup, setActiveGroup] = useState<string>('starlink');
   const [satellites, setSatellites] = useState<SatelliteData[]>([]);
+  const [positions, setPositions] = useState<SatelliteData[]>([]);
   const [loading, setLoading] = useState(true);
   const [texturesLoaded, setTexturesLoaded] = useState(false);
   const [showLanding, setShowLanding] = useState(true);
@@ -272,6 +273,7 @@ export default function SatelliteGlobe() {
     fetchSatellitesByGroup(activeGroup)
       .then((res) => {
         setSatellites(res.satellites);
+        setPositions([]);
         setDataSource(res.source);
         setErrorDetails(res.errorDetails || '');
         setLoading(false);
@@ -498,7 +500,7 @@ export default function SatelliteGlobe() {
       }
 
       // Propagate satellites
-      const propagated: SatelliteData[] = [];
+      const propagated: any[] = [];
       for (let i = 0; i < satellites.length; i++) {
         const sat = satellites[i];
         const positionAndVelocity = satellite.propagate(sat.satrec, now);
@@ -509,26 +511,27 @@ export default function SatelliteGlobe() {
         if (positionEci && typeof positionEci !== 'boolean') {
           const positionGd = satellite.eciToGeodetic(positionEci, gmst);
           
-          sat.lat = satellite.degreesLat(positionGd.latitude);
-          sat.lng = satellite.degreesLong(positionGd.longitude);
-          sat.alt = positionGd.height / EARTH_RADIUS_KM;
-
+          let speed = 0;
           if (typeof velocityEci !== 'boolean' && velocityEci) {
-            sat.speed = Math.sqrt(
+            speed = Math.sqrt(
               velocityEci.x * velocityEci.x +
               velocityEci.y * velocityEci.y +
               velocityEci.z * velocityEci.z
             );
           }
-          propagated.push(sat);
-        } else {
-          sat.lat = undefined;
-          sat.lng = undefined;
-          sat.alt = undefined;
+          propagated.push({
+            name: sat.name,
+            satrec: sat.satrec,
+            lat: satellite.degreesLat(positionGd.latitude),
+            lng: satellite.degreesLong(positionGd.longitude),
+            alt: positionGd.height / EARTH_RADIUS_KM,
+            speed
+          });
         }
       }
 
       setTick(t => t + 1);
+      setPositions(propagated);
 
       // Calculate paths and footprints
       const newPaths: any[] = [];
@@ -644,9 +647,13 @@ export default function SatelliteGlobe() {
   // Filter based on search query
   const filteredSatellites = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return satellites.filter(s => s.lat !== undefined);
-    return satellites.filter(s => s.lat !== undefined && s.name.toLowerCase().includes(query));
-  }, [satellites, searchQuery, tick]);
+    if (!query) return positions;
+    return positions.filter(
+      (s) =>
+        s.name.toLowerCase().includes(query) ||
+        (s.satrec && s.satrec.satnum !== undefined && String(s.satrec.satnum).includes(query))
+    );
+  }, [positions, searchQuery, tick]);
 
   // Return a custom ThreeJS Mesh based on satellite classification (glowing models)
   const getSatObject = useCallback((d: any) => {

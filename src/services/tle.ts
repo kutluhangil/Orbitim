@@ -174,7 +174,10 @@ export async function fetchSatellitesByGroup(group: string = 'starlink'): Promis
 }
 
 export function parseTLE(tleData: string): SatelliteData[] {
-  const lines = tleData.split('\n').map(line => line.trim());
+  const lines = tleData
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
   const satellites: SatelliteData[] = [];
 
   for (let i = 0; i < lines.length; i += 3) {
