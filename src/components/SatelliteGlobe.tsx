@@ -3,7 +3,7 @@ import Globe from 'react-globe.gl';
 import * as THREE from 'three';
 import * as satellite from 'satellite.js';
 import { fetchSatellitesByGroup, type SatelliteData } from '../services/tle';
-import { Search, Info, Radio, Compass, X, Cpu, Layers, Play } from 'lucide-react';
+import { Search, Info, Radio, Compass, X, Cpu, Layers, Play, Pause } from 'lucide-react';
 import starlinkImg from '../assets/starlink.png';
 import logoImg from '../assets/logo.png';
 
@@ -149,7 +149,6 @@ export default function SatelliteGlobe() {
   const [searchQuery, setSearchQuery] = useState('');
   const [dataSource, setDataSource] = useState<string>('unknown');
   const [errorDetails, setErrorDetails] = useState<string>('');
-  const [tick, setTick] = useState(0);
   const [showLaserLinks, setShowLaserLinks] = useState(false);
   const sunVectorRef = useRef<THREE.Vector3>(new THREE.Vector3(1, 0, 0));
   const [mobileShowLayers, setMobileShowLayers] = useState(false);
@@ -158,6 +157,18 @@ export default function SatelliteGlobe() {
   const [showSelectedFootprint, setShowSelectedFootprint] = useState(true);
   const [followSelected, setFollowSelected] = useState(true);
   const [labels, setLabels] = useState<any[]>([]);
+
+  const [isRotating, setIsRotating] = useState(true);
+  const [isTimeFlowing, setIsTimeFlowing] = useState(true);
+  const frozenTimeRef = useRef<Date | null>(null);
+
+  useEffect(() => {
+    if (isTimeFlowing) {
+      frozenTimeRef.current = null;
+    } else {
+      frozenTimeRef.current = new Date();
+    }
+  }, [isTimeFlowing]);
 
   // Memoize all currently enabled satellites
   const satellites = useMemo(() => {
@@ -180,11 +191,11 @@ export default function SatelliteGlobe() {
     if (globeRef.current && texturesLoaded) {
       const controls = globeRef.current.controls();
       if (controls) {
-        controls.autoRotate = !selectedSat;
+        controls.autoRotate = isRotating && !selectedSat;
         controls.autoRotateSpeed = 0.12; // slow, realistic rotation
       }
     }
-  }, [texturesLoaded, selectedSat]);
+  }, [texturesLoaded, selectedSat, isRotating]);
 
   // Load default active layers on mount
   useEffect(() => {
@@ -491,20 +502,17 @@ export default function SatelliteGlobe() {
     return () => cancelAnimationFrame(animId);
   }, [texturesLoaded]);
 
-  // Update positions & orbits in-place
+  const [selectedSatLive, setSelectedSatLive] = useState<SatelliteData | null>(null);
+
+  // Update clock, Sun, Moon, and selected satellite telemetry
   useEffect(() => {
-    if (!satellites.length) return;
-
-    const updatePositions = () => {
-      const now = new Date();
-      const gmst = satellite.gstime(now);
-
+    const updateRealtime = () => {
+      const now = frozenTimeRef.current || new Date();
       setTime(now.toISOString().substring(11, 19));
 
       // Calculate and update Sun/Moon coordinates
       const sunCoord = getSunPosition(now);
       const moonCoord = getMoonPosition(now);
-      
       const sunPos = sphericalToCartesian(sunCoord.lat, sunCoord.lng, 450);
       const moonPos = sphericalToCartesian(moonCoord.lat, moonCoord.lng, 400);
 
@@ -520,183 +528,204 @@ export default function SatelliteGlobe() {
         if (globe._customMoonMesh) globe._customMoonMesh.position.copy(moonPos);
       }
 
-      // Propagate satellites
-      const propagated: any[] = [];
-      for (let i = 0; i < satellites.length; i++) {
-        const sat = satellites[i];
-        const positionAndVelocity = satellite.propagate(sat.satrec, now);
-        if (!positionAndVelocity) continue;
-        const positionEci = positionAndVelocity.position;
-        const velocityEci = positionAndVelocity.velocity;
+      // Propagate selected satellite for telemetry & paths
+      if (selectedSat && selectedSat.satrec) {
+        const gmst = satellite.gstime(now);
+        const posVel = satellite.propagate(selectedSat.satrec, now);
+        if (posVel && posVel.position && typeof posVel.position !== 'boolean') {
+          const gd = satellite.eciToGeodetic(posVel.position, gmst);
+          const lat = satellite.degreesLat(gd.latitude);
+          const lng = satellite.degreesLong(gd.longitude);
+          const alt = gd.height / EARTH_RADIUS_KM;
 
-        if (positionEci && typeof positionEci !== 'boolean') {
-          const positionGd = satellite.eciToGeodetic(positionEci, gmst);
-          
           let speed = 0;
-          if (typeof velocityEci !== 'boolean' && velocityEci) {
+          if (posVel && posVel.velocity && typeof posVel.velocity !== 'boolean') {
             speed = Math.sqrt(
-              velocityEci.x * velocityEci.x +
-              velocityEci.y * velocityEci.y +
-              velocityEci.z * velocityEci.z
+              posVel.velocity.x * posVel.velocity.x +
+              posVel.velocity.y * posVel.velocity.y +
+              posVel.velocity.z * posVel.velocity.z
             );
           }
-          propagated.push({
-            name: sat.name,
-            satrec: sat.satrec,
-            lat: satellite.degreesLat(positionGd.latitude),
-            lng: satellite.degreesLong(positionGd.longitude),
-            alt: positionGd.height / EARTH_RADIUS_KM,
+
+          setSelectedSatLive({
+            ...selectedSat,
+            lat,
+            lng,
+            alt,
             speed
           });
         }
+      } else {
+        setSelectedSatLive(null);
       }
-
-      setTick(t => t + 1);
-      setPositions(propagated);
-
-      // Calculate paths and footprints
-      const newPaths: any[] = [];
-      const newRings: any[] = [];
-      const newLabels: any[] = [];
-
-      if (selectedSat) {
-        const currentSat = propagated.find(s => s.name === selectedSat.name);
-        if (currentSat && currentSat.lat !== undefined) {
-          // Label above the selected satellite
-          newLabels.push({
-            lat: currentSat.lat,
-            lng: currentSat.lng,
-            text: currentSat.name
-          });
-
-          // Orbit path calculations (Past + Future paths)
-          if (showSelectedOrbit) {
-            const pathPointsPast: any[] = [];
-            const pathPointsFuture: any[] = [];
-            
-            // Past 45 minutes (-45 to 0)
-            for (let i = -45; i <= 0; i += 1.5) {
-              const futureTime = new Date(now.getTime() + i * 60000);
-              const futureGmst = satellite.gstime(futureTime);
-              const posVel = satellite.propagate(currentSat.satrec, futureTime);
-              if (!posVel) continue;
-              const posEci = posVel.position;
-              
-              if (posEci && typeof posEci !== 'boolean') {
-                const posGd = satellite.eciToGeodetic(posEci, futureGmst);
-                pathPointsPast.push([
-                  satellite.degreesLat(posGd.latitude),
-                  satellite.degreesLong(posGd.longitude),
-                  posGd.height / EARTH_RADIUS_KM
-                ]);
-              }
-            }
-
-            // Future 45 minutes (0 to 45)
-            for (let i = 0; i <= 45; i += 1.5) {
-              const futureTime = new Date(now.getTime() + i * 60000);
-              const futureGmst = satellite.gstime(futureTime);
-              const posVel = satellite.propagate(currentSat.satrec, futureTime);
-              if (!posVel) continue;
-              const posEci = posVel.position;
-              
-              if (posEci && typeof posEci !== 'boolean') {
-                const posGd = satellite.eciToGeodetic(posEci, futureGmst);
-                pathPointsFuture.push([
-                  satellite.degreesLat(posGd.latitude),
-                  satellite.degreesLong(posGd.longitude),
-                  posGd.height / EARTH_RADIUS_KM
-                ]);
-              }
-            }
-
-            if (pathPointsPast.length > 0) {
-              newPaths.push({
-                coords: pathPointsPast,
-                isNadir: false,
-                isLaser: false,
-                isPastOrbit: true
-              });
-            }
-            if (pathPointsFuture.length > 0) {
-              newPaths.push({
-                coords: pathPointsFuture,
-                isNadir: false,
-                isLaser: false,
-                isFutureOrbit: true
-              });
-            }
-          }
-
-          // Nadir Downlink Beam
-          newPaths.push({
-            coords: [
-              [currentSat.lat, currentSat.lng, currentSat.alt || 0.1],
-              [currentSat.lat, currentSat.lng, 0.005]
-            ],
-            isNadir: true,
-            isLaser: false
-          });
-
-          // Footprint Ring
-          if (showSelectedFootprint) {
-            newRings.push({
-              lat: currentSat.lat,
-              lng: currentSat.lng,
-              maxR: 15,
-              propagationSpeed: 0,
-              repeatPeriod: 0
-            });
-          }
-        }
-      }
-
-      // Laser Links (Optical inter-satellite cross-links)
-      if (showLaserLinks && visibleLayers.starlink && propagated.length > 30) {
-        const sorted = [...propagated].sort((a, b) => (a.lng || 0) - (b.lng || 0));
-        let laserCount = 0;
-        
-        for (let i = 0; i < sorted.length; i++) {
-          const s1 = sorted[i];
-          if (s1.lat === undefined || s1.lng === undefined) continue;
-          
-          for (let j = 1; j <= 2; j++) {
-            const s2 = sorted[(i + j) % sorted.length];
-            if (s2.lat === undefined || s2.lng === undefined) continue;
-            
-            const latDiff = Math.abs(s1.lat - s2.lat);
-            const lngDiff = Math.abs(s1.lng - s2.lng);
-            const actualLngDiff = lngDiff > 180 ? 360 - lngDiff : lngDiff;
-            
-            if (latDiff < 5.5 && actualLngDiff < 5.5) {
-              newPaths.push({
-                coords: [
-                  [s1.lat, s1.lng, s1.alt || 0.1],
-                  [s2.lat, s2.lng, s2.alt || 0.1]
-                ],
-                isNadir: false,
-                isLaser: true
-              });
-              laserCount++;
-              if (laserCount >= 200) break;
-            }
-          }
-          if (laserCount >= 200) break;
-        }
-      }
-
-      setPaths(newPaths);
-      setRings(newRings);
-      setLabels(newLabels);
     };
 
-    updatePositions();
-    // Dynamic interval based on constellation size: 2.5s for massive Starlink, 1s for lightweight ones
-    const intervalTime = satellites.length > 2000 ? 2500 : 1000;
-    const interval = setInterval(updatePositions, intervalTime);
-
+    updateRealtime();
+    const interval = setInterval(updateRealtime, 1000);
     return () => clearInterval(interval);
-  }, [satellites, selectedSat, showLaserLinks, visibleLayers, showSelectedOrbit, showSelectedFootprint]);
+  }, [selectedSat, isTimeFlowing]);
+
+  // Setup initial positions and paths when satellites are loaded or toggled
+  useEffect(() => {
+    if (!satellites.length) {
+      setPositions([]);
+      setPaths([]);
+      setRings([]);
+      setLabels([]);
+      return;
+    }
+
+    const now = frozenTimeRef.current || new Date();
+    const gmst = satellite.gstime(now);
+    const initialPos: SatelliteData[] = [];
+
+    for (let i = 0; i < satellites.length; i++) {
+      const s = satellites[i];
+      if (!s.satrec) continue;
+      const posVel = satellite.propagate(s.satrec, now);
+      if (posVel && posVel.position && typeof posVel.position !== 'boolean') {
+        const gd = satellite.eciToGeodetic(posVel.position, gmst);
+        initialPos.push({
+          ...s,
+          lat: satellite.degreesLat(gd.latitude),
+          lng: satellite.degreesLong(gd.longitude),
+          alt: gd.height / EARTH_RADIUS_KM
+        });
+      }
+    }
+
+    setPositions(initialPos);
+
+    // Compute static/initial Laser links if Starlink is visible
+    const newPaths: any[] = [];
+    if (showLaserLinks && visibleLayers.starlink && initialPos.length > 30) {
+      const starlinks = initialPos.filter(s => s.group === 'starlink');
+      const sorted = [...starlinks].sort((a, b) => (a.lng || 0) - (b.lng || 0));
+      let laserCount = 0;
+      
+      for (let i = 0; i < sorted.length; i++) {
+        const s1 = sorted[i];
+        if (s1.lat === undefined || s1.lng === undefined) continue;
+        for (let j = i + 1; j < Math.min(i + 8, sorted.length); j++) {
+          const s2 = sorted[j];
+          if (s2.lat === undefined || s2.lng === undefined) continue;
+          
+          const latDiff = Math.abs(s1.lat - s2.lat);
+          const lngDiff = Math.abs(s1.lng - s2.lng);
+          const actualLngDiff = lngDiff > 180 ? 360 - lngDiff : lngDiff;
+          
+          if (latDiff < 5.5 && actualLngDiff < 5.5) {
+            newPaths.push({
+              coords: [
+                [s1.lat, s1.lng, s1.alt || 0.1],
+                [s2.lat, s2.lng, s2.alt || 0.1]
+              ],
+              isNadir: false,
+              isLaser: true
+            });
+            laserCount++;
+            if (laserCount >= 300) break; // Limit to 300 links to keep rendering fast
+          }
+        }
+        if (laserCount >= 300) break;
+      }
+    }
+
+    setPaths(newPaths);
+    setRings([]);
+    setLabels([]);
+  }, [satellites, showLaserLinks, visibleLayers]);
+
+  // Update paths (orbits, nadir beams, labels) when selected satellite or its live position changes
+  useEffect(() => {
+    const newPaths: any[] = [];
+    const newRings: any[] = [];
+    const newLabels: any[] = [];
+
+    // Keep the laser links if computed
+    const laserPaths = paths.filter(p => p.isLaser);
+    newPaths.push(...laserPaths);
+
+    if (selectedSatLive && selectedSatLive.satrec) {
+      const now = frozenTimeRef.current || new Date();
+
+      // Label
+      newLabels.push({
+        lat: selectedSatLive.lat,
+        lng: selectedSatLive.lng,
+        text: selectedSatLive.name
+      });
+
+      // Orbit Path
+      if (showSelectedOrbit) {
+        const pathPointsPast: [number, number, number][] = [];
+        const pathPointsFuture: [number, number, number][] = [];
+        
+        // Calculate orbit (past 45m and future 45m)
+        for (let i = -45; i <= 45; i += 1.5) {
+          const futureDate = new Date(now.getTime() + i * 60000);
+          const futureGmst = satellite.gstime(futureDate);
+          const posVel = satellite.propagate(selectedSatLive.satrec, futureDate);
+          
+          if (posVel && posVel.position && typeof posVel.position !== 'boolean') {
+            const posGd = satellite.eciToGeodetic(posVel.position, futureGmst);
+            const pt: [number, number, number] = [
+              satellite.degreesLat(posGd.latitude),
+              satellite.degreesLong(posGd.longitude),
+              posGd.height / EARTH_RADIUS_KM
+            ];
+            if (i <= 0) {
+              pathPointsPast.push(pt);
+            } else {
+              pathPointsFuture.push(pt);
+            }
+          }
+        }
+
+        if (pathPointsPast.length > 0) {
+          newPaths.push({
+            coords: pathPointsPast,
+            isNadir: false,
+            isLaser: false,
+            isPastOrbit: true
+          });
+        }
+        if (pathPointsFuture.length > 0) {
+          newPaths.push({
+            coords: pathPointsFuture,
+            isNadir: false,
+            isLaser: false,
+            isFutureOrbit: true
+          });
+        }
+      }
+
+      // Nadir Beam
+      newPaths.push({
+        coords: [
+          [selectedSatLive.lat, selectedSatLive.lng, selectedSatLive.alt || 0.1],
+          [selectedSatLive.lat, selectedSatLive.lng, 0.005]
+        ],
+        isNadir: true,
+        isLaser: false
+      });
+
+      // Footprint Ring
+      if (showSelectedFootprint) {
+        newRings.push({
+          lat: selectedSatLive.lat,
+          lng: selectedSatLive.lng,
+          maxR: 15,
+          propagationSpeed: 0,
+          repeatPeriod: 0
+        });
+      }
+    }
+
+    setPaths(newPaths);
+    setRings(newRings);
+    setLabels(newLabels);
+  }, [selectedSatLive, showSelectedOrbit, showSelectedFootprint]);
 
   // Adjust camera to focus on selected satellite when clicked
   useEffect(() => {
@@ -712,18 +741,17 @@ export default function SatelliteGlobe() {
 
   // Dynamically update camera focus to follow selected satellite along its orbit path
   useEffect(() => {
-    if (selectedSat && followSelected && globeRef.current) {
-      const currentSat = positions.find(s => s.name === selectedSat.name);
-      if (currentSat && currentSat.lat !== undefined) {
+    if (selectedSatLive && followSelected && globeRef.current) {
+      if (selectedSatLive.lat !== undefined) {
         const currentPOV = globeRef.current.pointOfView();
         globeRef.current.pointOfView({
-          lat: currentSat.lat,
-          lng: currentSat.lng,
+          lat: selectedSatLive.lat,
+          lng: selectedSatLive.lng,
           altitude: currentPOV.altitude
         }, 800);
       }
     }
-  }, [positions, selectedSat, followSelected]);
+  }, [selectedSatLive, followSelected]);
 
   // Filter based on search query
   const filteredSatellites = useMemo(() => {
@@ -734,7 +762,7 @@ export default function SatelliteGlobe() {
         s.name.toLowerCase().includes(query) ||
         (s.satrec && s.satrec.satnum !== undefined && String(s.satrec.satnum).includes(query))
     );
-  }, [positions, searchQuery, tick]);
+  }, [positions, searchQuery]);
 
   // Return a custom ThreeJS Mesh based on satellite classification (glowing models)
   const getSatObject = useCallback((d: any) => {
@@ -800,7 +828,7 @@ export default function SatelliteGlobe() {
     };
 
     return group;
-  }, [selectedSat, searchQuery]);
+  }, [selectedSat, searchQuery, isTimeFlowing]);
 
   const satrec = selectedSat?.satrec;
   const tleDateString = satrec ? getTleEpochDate(satrec) : 'TLE 2026-07-20 00:00:00 UTC';
@@ -1055,7 +1083,7 @@ export default function SatelliteGlobe() {
               </div>
             )}
             <div className="mt-2 pt-2 border-t border-white/5 space-y-1 text-[9px] text-white/30">
-              <div>TICK: {tick}</div>
+              <div>LIVE SIMULATION ACTIVE</div>
               <div>SATS IN MEMORY: {satellites.length}</div>
               <div>FILTERED SATS: {filteredSatellites.length}</div>
               {satellites[0] && (
@@ -1487,6 +1515,40 @@ export default function SatelliteGlobe() {
           labelSize={0.4}
           labelResolution={6}
         />
+      )}
+
+      {/* Playback Controls (Play/Pause/Live) */}
+      {!showLanding && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-[#111622]/90 backdrop-blur-lg border border-white/10 px-4 py-2 rounded-full text-white shadow-2xl flex items-center gap-4 pointer-events-auto select-none">
+          <button 
+            onClick={() => {
+              const next = !isTimeFlowing;
+              setIsTimeFlowing(next);
+              setIsRotating(next);
+            }}
+            className="p-2 hover:bg-white/10 rounded-full transition-all text-blue-400 hover:text-white flex items-center justify-center"
+            title={isTimeFlowing ? "Pause Simulation" : "Play Simulation"}
+          >
+            {isTimeFlowing ? <Pause className="h-4.5 w-4.5" /> : <Play className="h-4.5 w-4.5 fill-current" />}
+          </button>
+          
+          <div className="w-px h-4 bg-white/10" />
+          
+          <button 
+            onClick={() => {
+              setIsTimeFlowing(true);
+              setIsRotating(true);
+            }}
+            className={`flex items-center gap-2 px-3 py-1 border rounded-full text-[10px] font-mono tracking-wider transition-all ${
+              isTimeFlowing 
+                ? 'bg-green-500/10 text-green-400 border-green-500/20' 
+                : 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${isTimeFlowing ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+            {isTimeFlowing ? 'LIVE' : 'PAUSED'}
+          </button>
+        </div>
       )}
     </div>
   );
