@@ -1516,7 +1516,7 @@ export default function SatelliteGlobe() {
 
       {/* Footer - Quick Tips (With smooth slide-in transition) */}
       <div 
-        className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-10 pointer-events-none bg-black/40 backdrop-blur-md border border-white/5 py-2 px-6 rounded-full text-white/50 text-[10px] uppercase tracking-wider shadow-xl hidden md:flex items-center gap-2 transition-all duration-1000 ease-in-out ${
+        className={`absolute bottom-20 left-1/2 -translate-x-1/2 z-10 pointer-events-none bg-black/40 backdrop-blur-md border border-white/5 py-2 px-6 rounded-full text-white/50 text-[10px] uppercase tracking-wider shadow-xl hidden md:flex items-center gap-2 transition-all duration-1000 ease-in-out ${
           showLanding || loading ? 'translate-y-20 opacity-0' : 'translate-y-0 opacity-100'
         }`}
       >
@@ -1886,7 +1886,7 @@ export default function SatelliteGlobe() {
 
       {/* Playback Controls (Play/Pause/Live + Warp Speed Slider) */}
       {!showLanding && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-[#111622]/90 backdrop-blur-lg border border-white/10 px-5 py-2.5 rounded-full text-white shadow-2xl flex items-center gap-4 pointer-events-auto select-none">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 bg-[#111622]/90 backdrop-blur-lg border border-white/10 px-5 py-2.5 rounded-full text-white shadow-2xl flex items-center gap-4 pointer-events-auto select-none">
           {/* Play/Pause Buttons */}
           <div className="flex items-center gap-1">
             <button 
