@@ -3,7 +3,7 @@ import Globe from 'react-globe.gl';
 import * as THREE from 'three';
 import * as satellite from 'satellite.js';
 import { fetchSatellitesByGroup, type SatelliteData } from '../services/tle';
-import { Search, Info, Radio, Compass, X, Cpu, Layers, Play, Pause } from 'lucide-react';
+import { Search, Info, Radio, Compass, X, Cpu, Layers, Play, Pause, Zap, Clock, ShieldAlert, Globe as GlobeIcon } from 'lucide-react';
 import starlinkImg from '../assets/starlink.png';
 import logoImg from '../assets/logo.png';
 
@@ -16,7 +16,7 @@ const GROUPS = [
   { id: 'galileo', name: 'Galileo', count: 49, color: '#06b6d4' },
   { id: 'weather', name: 'Weather', count: 38, color: '#ec4899' },
   { id: 'oneweb', name: 'OneWeb', count: 651, color: '#a855f7' },
-  { id: 'starlink', name: 'Starlink', count: 10785, color: '#3b82f6' },
+  { id: 'starlink', name: 'Starlink', count: 10785, color: '#ffffff' },
   { id: 'brightest', name: 'Brightest', count: 157, color: '#ffffff' },
   { id: 'debris_cosmos', name: 'Debris · Cosmos-2251', count: 593, color: '#f43f5e' },
   { id: 'debris_iridium', name: 'Debris · Iridium-33', count: 110, color: '#fb923c' },
@@ -33,26 +33,49 @@ const LUNAR_SATELLITES = [
   { name: 'Apollo 11 Command Module', id: 4400, altitude: 110, inclination: 10, color: '#818cf8', period: 7700, group: 'moon_sats' }
 ];
 
+const SOLAR_PROBES = [
+  { name: 'Parker Solar Probe', id: 43615, altitude: 45, inclination: 3.4, color: '#fbbf24', period: 36000, group: 'solar_probes' },
+  { name: 'SOHO (Solar & Heliospheric Obs.)', id: 23741, altitude: 85, inclination: 7.2, color: '#f43f5e', period: 72000, group: 'solar_probes' },
+  { name: 'Solar Orbiter (ESA/NASA)', id: 45184, altitude: 60, inclination: 24.0, color: '#22c55e', period: 48000, group: 'solar_probes' },
+  { name: 'STEREO-A', id: 29499, altitude: 95, inclination: 0.1, color: '#38bdf8', period: 96000, group: 'solar_probes' },
+  { name: 'Aditya-L1 (ISRO)', id: 57771, altitude: 75, inclination: 12.5, color: '#a855f7', period: 54000, group: 'solar_probes' }
+];
 
 
-// Geometries for simple dot representation and easy click collision
-const dotGeometry = new THREE.SphereGeometry(0.35, 5, 5);
-const collisionGeometry = new THREE.SphereGeometry(3.2, 4, 4);
-const collisionMaterial = new THREE.MeshBasicMaterial({ visible: false });
 
-// Shared material cache to avoid creating thousands of duplicate WebGL materials
-const materialCache: Record<string, THREE.MeshBasicMaterial> = {};
 
-function getSharedMaterial(color: string, opacity: number): THREE.MeshBasicMaterial {
+
+// Create a canvas texture for the satellite glow sprite (sharp circular dot)
+const satCanvas = document.createElement('canvas');
+satCanvas.width = 16;
+satCanvas.height = 16;
+const satCtx = satCanvas.getContext('2d')!;
+const satGrad = satCtx.createRadialGradient(8, 8, 0, 8, 8, 8);
+satGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+satGrad.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
+satGrad.addColorStop(0.7, 'rgba(255, 255, 255, 0.95)');
+satGrad.addColorStop(0.85, 'rgba(255, 255, 255, 0.4)');
+satGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+satCtx.fillStyle = satGrad;
+satCtx.fillRect(0, 0, 16, 16);
+const satTexture = new THREE.CanvasTexture(satCanvas);
+
+// Shared sprite material cache to avoid creating duplicate sprite materials
+const spriteMaterialCache: Record<string, THREE.SpriteMaterial> = {};
+
+function getSharedSpriteMaterial(color: string, opacity: number): THREE.SpriteMaterial {
   const key = `${color}_${opacity}`;
-  if (!materialCache[key]) {
-    materialCache[key] = new THREE.MeshBasicMaterial({
-      color,
-      transparent: opacity < 1.0,
-      opacity
+  if (!spriteMaterialCache[key]) {
+    spriteMaterialCache[key] = new THREE.SpriteMaterial({
+      map: satTexture,
+      color: new THREE.Color(color),
+      transparent: true,
+      opacity,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
     });
   }
-  return materialCache[key];
+  return spriteMaterialCache[key];
 }
 
 // Format TLE epoch yr and day fraction into UTC date string
@@ -147,7 +170,7 @@ export default function SatelliteGlobe() {
     geo: false
   });
   const [loadedSatellites, setLoadedSatellites] = useState<Record<string, SatelliteData[]>>({});
-  const [observationTarget, setObservationTarget] = useState<'earth' | 'moon'>('earth');
+  const [observationTarget, setObservationTarget] = useState<'earth' | 'moon' | 'sun'>('earth');
   const [loadingGroups, setLoadingGroups] = useState<Record<string, boolean>>({});
   const [positions, setPositions] = useState<SatelliteData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,6 +197,7 @@ export default function SatelliteGlobe() {
   const [timeMultiplier, setTimeMultiplier] = useState<number>(1);
   const [simTime, setSimTime] = useState<Date>(new Date());
   const simTimeRef = useRef<Date>(new Date());
+  const currentGmstRef = useRef<number>(satellite.gstime(new Date()));
   const [collisionWarning, setCollisionWarning] = useState<string | null>(null);
 
   // Keep simTimeRef synced for the ThreeJS high-performance render loop
@@ -194,6 +218,9 @@ export default function SatelliteGlobe() {
     if (observationTarget === 'moon') {
       return loadedSatellites.moon_sats || [];
     }
+    if (observationTarget === 'sun') {
+      return loadedSatellites.solar_probes || [];
+    }
     let combined: SatelliteData[] = [];
     for (const groupId of Object.keys(visibleLayers)) {
       if (visibleLayers[groupId] && loadedSatellites[groupId]) {
@@ -207,6 +234,8 @@ export default function SatelliteGlobe() {
   const [paths, setPaths] = useState<any[]>([]);
   const [rings, setRings] = useState<any[]>([]);
   const [globeMaterial, setGlobeMaterial] = useState<THREE.Material | null>(null);
+  const [moonMaterial, setMoonMaterial] = useState<THREE.Material | null>(null);
+  const [sunMaterial, setSunMaterial] = useState<THREE.Material | null>(null);
 
   // Enable auto-rotation globally so that the Earth spins realistically on its axis
   useEffect(() => {
@@ -216,7 +245,12 @@ export default function SatelliteGlobe() {
         controls.autoRotate = isRotating && !selectedSat;
         controls.autoRotateSpeed = 0.12; // slow, realistic rotation
         controls.minDistance = 110; // Prevent zooming inside Earth/Moon surface
-        controls.maxDistance = 450; // Prevent zooming too far out into deep space (generous but bounded limit)
+        controls.maxDistance = 1600; // Allow zooming out much further to see Moon/Sun orbits in perspective
+      }
+      const camera = globeRef.current.camera();
+      if (camera && (camera as any).isPerspectiveCamera) {
+        (camera as any).far = 15000; // Prevent clipping of distant stars and orbiting bodies at wide zoom
+        (camera as any).updateProjectionMatrix();
       }
     }
   }, [texturesLoaded, selectedSat, isRotating]);
@@ -256,6 +290,30 @@ export default function SatelliteGlobe() {
         }
         return;
       }
+
+      if (observationTarget === 'sun') {
+        // Load solar probes locally using Keplerian propagation
+        const mockData = SOLAR_PROBES.map(s => {
+          return {
+            name: s.name,
+            group: 'solar_probes',
+            satrec: {
+              satnum: s.id,
+            },
+            lat: 0,
+            lng: 0,
+            alt: s.altitude / 100, // normalized size for solar orbit view
+            speed: 45.8, // Solar escape/orbital speed scale
+            lunarOrbit: s // reuse Keplerian specs
+          } as any;
+        });
+
+        if (active) {
+          setLoadedSatellites({ solar_probes: mockData });
+          setLoading(false);
+        }
+        return;
+      }
       
       try {
         const defaults = ['starlink', 'stations'];
@@ -283,7 +341,11 @@ export default function SatelliteGlobe() {
       }
     };
     
-    initLoad();
+    initLoad().then(() => {
+      if (active && globeRef.current) {
+        globeRef.current.pointOfView({ lat: 0, lng: 0, altitude: 2.5 }, 1000);
+      }
+    });
     return () => { active = false; };
   }, [observationTarget]);
 
@@ -323,22 +385,74 @@ export default function SatelliteGlobe() {
     console.log("Loading 8K planetary textures...");
     Promise.all([
       textureLoader.loadAsync('https://cdn.jsdelivr.net/gh/Shriisoot/Planets-texture/8k_earth_daymap.jpg'),
-      textureLoader.loadAsync('https://cdn.jsdelivr.net/gh/Shriisoot/Planets-texture/8k_earth_nightmap.jpg')
-    ]).then(([dayTexture, nightTexture]) => {
-      console.log("8K textures successfully loaded.");
+      textureLoader.loadAsync('https://cdn.jsdelivr.net/gh/Shriisoot/Planets-texture/8k_earth_nightmap.jpg'),
+      textureLoader.loadAsync('https://vasturiano.github.io/react-globe.gl/example/moon-landing-sites/lunar_surface.jpg')
+    ]).then(([dayTexture, nightTexture, moonTexture]) => {
+      console.log("Planetary textures successfully loaded.");
       const mat = new THREE.MeshStandardMaterial({
         map: dayTexture,
-        color: new THREE.Color('#556b82'), // Multiplying with slate-blue to desaturate and darken the day side
+        color: new THREE.Color('#1c2a38'), // Deep navy/slate desaturation to make it dark and atmospheric
         emissiveMap: nightTexture,
         emissive: new THREE.Color('#fcd34d'), // Warm golden city lights
-        emissiveIntensity: 2.2, // Make city lights pop
+        emissiveIntensity: 1.5, // Elegant city lights intensity
         roughness: 0.7,
         metalness: 0.1
       });
       setGlobeMaterial(mat);
+
+      const moonMat = new THREE.MeshStandardMaterial({
+        map: moonTexture,
+        bumpMap: moonTexture,
+        bumpScale: 0.15,
+        roughness: 0.9,
+        metalness: 0.05
+      });
+      setMoonMaterial(moonMat);
+
+      // Procedurally generate highly detailed 3D Sun material
+      const sunCanvas = document.createElement('canvas');
+      sunCanvas.width = 256;
+      sunCanvas.height = 128;
+      const sCtx = sunCanvas.getContext('2d')!;
+      sCtx.fillStyle = '#e65c00'; // Sun base orange
+      sCtx.fillRect(0, 0, 256, 128);
+      
+      // Generate solar plasma turbulence
+      for (let i = 0; i < 80; i++) {
+        const x = Math.random() * 256;
+        const y = Math.random() * 128;
+        const r = 8 + Math.random() * 24;
+        const grad = sCtx.createRadialGradient(x, y, 0, x, y, r);
+        grad.addColorStop(0, 'rgba(255, 230, 0, 0.95)'); // Yellow hot spot
+        grad.addColorStop(0.3, 'rgba(255, 110, 0, 0.7)');  // Orange plasma
+        grad.addColorStop(0.6, 'rgba(230, 30, 0, 0.4)');   // Darker red filaments
+        grad.addColorStop(1, 'rgba(230, 92, 0, 0)');
+        sCtx.fillStyle = grad;
+        sCtx.beginPath();
+        sCtx.arc(x, y, r, 0, Math.PI * 2);
+        sCtx.fill();
+      }
+      
+      // Draw prominence arches
+      sCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      sCtx.lineWidth = 1.5;
+      for (let i = 0; i < 15; i++) {
+        sCtx.beginPath();
+        const x = Math.random() * 256;
+        const y = Math.random() * 128;
+        sCtx.arc(x, y, 10 + Math.random() * 15, 0, Math.PI * (0.5 + Math.random() * 1.5));
+        sCtx.stroke();
+      }
+      
+      const sunTex = new THREE.CanvasTexture(sunCanvas);
+      const sunMat = new THREE.MeshBasicMaterial({ 
+        map: sunTex,
+        toneMapped: false
+      });
+      setSunMaterial(sunMat);
       setTexturesLoaded(true);
     }).catch(err => {
-      console.error("Failed to load 8K textures, using fallback material:", err);
+      console.error("Failed to load textures, using fallback material:", err);
       setTexturesLoaded(true);
     });
   }, []);
@@ -374,14 +488,75 @@ export default function SatelliteGlobe() {
     moonLight.name = 'custom-moon';
     scene.add(moonLight);
 
-    // Sun visual sphere (Shining pure white space core with dynamic core glow)
+    // Sun visual sphere (Detailed 3D Globe with procedural plasma texture and corona glow)
+    const sunCanvas = document.createElement('canvas');
+    sunCanvas.width = 256;
+    sunCanvas.height = 128;
+    const sCtx = sunCanvas.getContext('2d')!;
+    sCtx.fillStyle = '#e65c00'; // Sun base orange
+    sCtx.fillRect(0, 0, 256, 128);
+    
+    // Generate solar plasma turbulence
+    for (let i = 0; i < 80; i++) {
+      const x = Math.random() * 256;
+      const y = Math.random() * 128;
+      const r = 8 + Math.random() * 24;
+      const grad = sCtx.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(0, 'rgba(255, 230, 0, 0.95)'); // Yellow hot spot
+      grad.addColorStop(0.3, 'rgba(255, 110, 0, 0.7)');  // Orange plasma
+      grad.addColorStop(0.6, 'rgba(230, 30, 0, 0.4)');   // Darker red filaments
+      grad.addColorStop(1, 'rgba(230, 92, 0, 0)');
+      sCtx.fillStyle = grad;
+      sCtx.beginPath();
+      sCtx.arc(x, y, r, 0, Math.PI * 2);
+      sCtx.fill();
+    }
+    
+    // Draw prominence arches
+    sCtx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    sCtx.lineWidth = 1.5;
+    for (let i = 0; i < 15; i++) {
+      sCtx.beginPath();
+      const x = Math.random() * 256;
+      const y = Math.random() * 128;
+      sCtx.arc(x, y, 10 + Math.random() * 15, 0, Math.PI * (0.5 + Math.random() * 1.5));
+      sCtx.stroke();
+    }
+    
+    const sunTex = new THREE.CanvasTexture(sunCanvas);
     const sunMeshGeo = new THREE.SphereGeometry(22, 32, 32);
     const sunMeshMat = new THREE.MeshBasicMaterial({ 
-      color: '#ffffff',
+      map: sunTex,
       toneMapped: false
     });
     const sunMesh = new THREE.Mesh(sunMeshGeo, sunMeshMat);
     sunMesh.name = 'sun-visual';
+    
+    // Create a radial gradient for the solar corona glow sprite
+    const coronaCanvas = document.createElement('canvas');
+    coronaCanvas.width = 64;
+    coronaCanvas.height = 64;
+    const cCtx = coronaCanvas.getContext('2d')!;
+    const cGrad = cCtx.createRadialGradient(32, 32, 8, 32, 32, 32);
+    cGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');  // Intense white core
+    cGrad.addColorStop(0.2, 'rgba(255, 195, 0, 0.85)'); // Golden inner corona
+    cGrad.addColorStop(0.6, 'rgba(255, 70, 0, 0.3)');   // Orange outer corona
+    cGrad.addColorStop(1, 'rgba(255, 70, 0, 0)');
+    cCtx.fillStyle = cGrad;
+    cCtx.fillRect(0, 0, 64, 64);
+    
+    const coronaTex = new THREE.CanvasTexture(coronaCanvas);
+    const coronaMat = new THREE.SpriteMaterial({
+      map: coronaTex,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      depthWrite: false
+    });
+    const coronaSprite = new THREE.Sprite(coronaMat);
+    coronaSprite.scale.set(80, 80, 1.0); // extend glow beyond the 22 radius sphere
+    coronaSprite.name = 'sun-corona';
+    sunMesh.add(coronaSprite);
+    
     scene.add(sunMesh);
 
     // Realistic Moon visual sphere using dynamic crater CanvasTexture
@@ -419,12 +594,12 @@ export default function SatelliteGlobe() {
 
     // Add sharp 3D Starfield particles + Milky Way Galaxy Band
     const starsGeometry = new THREE.BufferGeometry();
-    const starsCount = 5500;
+    const starsCount = 10000;
     const starsPositions = new Float32Array(starsCount * 3);
     const starsColors = new Float32Array(starsCount * 3);
     
     for (let i = 0; i < starsCount * 3; i += 3) {
-      const r = 400 + Math.random() * 600;
+      const r = 800 + Math.random() * 2200; // Spaced from 800 to 3000 units to fully enclose the zoom space
       
       // Determine if this star belongs to the Milky Way central band
       const isMilkyWay = Math.random() < 0.45;
@@ -472,7 +647,7 @@ export default function SatelliteGlobe() {
     const starTex = new THREE.CanvasTexture(canvas);
     
     const starsMaterial = new THREE.PointsMaterial({
-      size: 2.2,
+      size: 3.5, // Increased size for rich visibility at distant zoom
       sizeAttenuation: true,
       map: starTex,
       vertexColors: true, // Enable custom colors for the galaxy band
@@ -484,6 +659,32 @@ export default function SatelliteGlobe() {
     
     const starField = new THREE.Points(starsGeometry, starsMaterial);
     scene.add(starField);
+
+    // Add central Sun corona sprite (only visible when observationTarget is 'sun')
+    const centralCoronaCanvas = document.createElement('canvas');
+    centralCoronaCanvas.width = 128;
+    centralCoronaCanvas.height = 128;
+    const ccCtx = centralCoronaCanvas.getContext('2d')!;
+    const ccGrad = ccCtx.createRadialGradient(64, 64, 45, 64, 64, 64);
+    ccGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');  // Bright center
+    ccGrad.addColorStop(0.15, 'rgba(255, 210, 0, 0.9)'); // Golden corona
+    ccGrad.addColorStop(0.4, 'rgba(255, 80, 0, 0.45)');  // Flare red
+    ccGrad.addColorStop(1, 'rgba(255, 80, 0, 0)');
+    ccCtx.fillStyle = ccGrad;
+    ccCtx.fillRect(0, 0, 128, 128);
+    
+    const centralCoronaTex = new THREE.CanvasTexture(centralCoronaCanvas);
+    const centralCoronaMat = new THREE.SpriteMaterial({
+      map: centralCoronaTex,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      depthWrite: false
+    });
+    const centralCoronaSprite = new THREE.Sprite(centralCoronaMat);
+    centralCoronaSprite.scale.set(320, 320, 1.0); // Globe radius is 100, so diameter is 200. Corona is 320 to extend outside!
+    centralCoronaSprite.name = 'central-sun-corona';
+    centralCoronaSprite.visible = false;
+    scene.add(centralCoronaSprite);
 
     // Save references to update on tick
     (globe as any)._customSunLight = sunLight;
@@ -498,6 +699,7 @@ export default function SatelliteGlobe() {
       scene.remove(sunMesh);
       scene.remove(moonMesh);
       scene.remove(starField);
+      scene.remove(centralCoronaSprite);
     };
   }, [texturesLoaded]);
 
@@ -567,10 +769,18 @@ export default function SatelliteGlobe() {
       }
       
       if (globe) {
-        // Rotate clouds
+        // Rotate and toggle clouds visibility based on target
         if (globe._customClouds) {
-          globe._customClouds.rotation.y += 0.00018;
-          globe._customClouds.rotation.x += 0.00005;
+          const isEarth = observationTargetRef.current === 'earth';
+          globe._customClouds.visible = isEarth;
+          if (isEarth) {
+            globe._customClouds.rotation.y += 0.00018;
+            globe._customClouds.rotation.x += 0.00005;
+          }
+        }
+        // Rotate the Sun visual sphere on its Y axis for plasma turbulence animation
+        if (globe._customSunMesh) {
+          globe._customSunMesh.rotation.y += 0.0008;
         }
       }
 
@@ -594,6 +804,9 @@ export default function SatelliteGlobe() {
     const now = isTimeFlowing ? simTime : (frozenTimeRef.current || new Date());
     setTime(now.toISOString().substring(11, 19));
 
+    // Calculate and cache GMST once per frame/time update
+    currentGmstRef.current = satellite.gstime(now);
+
     // Calculate and update Sun/Moon coordinates
     const sunCoord = getSunPosition(now);
     const moonCoord = getMoonPosition(now);
@@ -614,7 +827,7 @@ export default function SatelliteGlobe() {
 
     // Propagate selected satellite for telemetry & paths
     if (selectedSat) {
-      if (observationTarget === 'moon' && (selectedSat as any).lunarOrbit) {
+      if ((observationTarget === 'moon' || observationTarget === 'sun') && (selectedSat as any).lunarOrbit) {
         const orbit = (selectedSat as any).lunarOrbit;
         const t = now.getTime() / 1000;
         const angle = (2 * Math.PI * t) / orbit.period + ((selectedSat as any).phase || 0);
@@ -623,13 +836,16 @@ export default function SatelliteGlobe() {
         const lat = orbit.inclination * Math.sin(angle);
         const lng = ((angle * 180) / Math.PI) % 360;
         const alt = orbit.altitude;
+        
+        const scaleRadius = observationTarget === 'moon' ? 1737 : 100;
+        const speedVal = observationTarget === 'moon' ? Math.sqrt(4902.8 / (1737 + alt)) : 45.8;
 
         setSelectedSatLive({
           ...selectedSat,
           lat,
           lng,
-          alt: alt / 1737,
-          speed: Math.sqrt(4902.8 / (1737 + alt))
+          alt: alt / scaleRadius,
+          speed: speedVal
         });
       } else if (selectedSat.satrec) {
         const gmst = satellite.gstime(now);
@@ -754,15 +970,16 @@ export default function SatelliteGlobe() {
 
       // Orbit Path
       if (showSelectedOrbit) {
-        if (observationTarget === 'moon' && (selectedSatLive as any).lunarOrbit) {
+        if ((observationTarget === 'moon' || observationTarget === 'sun') && (selectedSatLive as any).lunarOrbit) {
           const orbit = (selectedSatLive as any).lunarOrbit;
           const pathPoints: [number, number, number][] = [];
+          const scaleRadius = observationTarget === 'moon' ? 1737 : 100;
           
           for (let j = 0; j <= 360; j += 4) {
             const angle = (j * Math.PI) / 180;
             const lat = orbit.inclination * Math.sin(angle);
             const lng = j;
-            const alt = orbit.altitude / 1737;
+            const alt = orbit.altitude / scaleRadius;
             pathPoints.push([lat, lng, alt]);
           }
 
@@ -863,11 +1080,24 @@ export default function SatelliteGlobe() {
     const scene = globe.scene();
     if (!scene) return;
 
+    // Toggle central sun corona visibility
+    const centralCorona = scene.getObjectByName('central-sun-corona');
+    if (centralCorona) {
+      centralCorona.visible = observationTarget === 'sun';
+    }
+
+    // Toggle orbiting sun visual visibility (cannot orbit itself)
+    const sunVisual = scene.getObjectByName('sun-visual');
+    if (sunVisual) {
+      sunVisual.visible = observationTarget !== 'sun';
+    }
+
     const bodyMesh = scene.getObjectByName('moon-visual') as THREE.Mesh;
     if (bodyMesh) {
       const loader = new THREE.TextureLoader();
-      if (observationTarget === 'moon') {
-        // The orbiting body is now the Earth! Load Earth texture.
+      if (observationTarget === 'moon' || observationTarget === 'sun') {
+        // The orbiting body is now the Earth! Load Earth texture and scale up.
+        bodyMesh.scale.set(3.6, 3.6, 3.6);
         loader.load('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg', (tex) => {
           bodyMesh.material = new THREE.MeshStandardMaterial({
             map: tex,
@@ -876,7 +1106,8 @@ export default function SatelliteGlobe() {
           });
         });
       } else {
-        // The orbiting body is now the Moon! Restore procedural Moon texture.
+        // The orbiting body is now the Moon! Restore procedural Moon texture and normal scale.
+        bodyMesh.scale.set(1.0, 1.0, 1.0);
         const moonCanvas = document.createElement('canvas');
         moonCanvas.width = 128;
         moonCanvas.height = 64;
@@ -1046,7 +1277,7 @@ export default function SatelliteGlobe() {
       galileo: '#06b6d4',
       weather: '#ec4899',
       oneweb: '#a855f7',
-      starlink: '#3b82f6',
+      starlink: '#ffffff', // White Starlink
       brightest: '#ffffff',
       debris_cosmos: '#f43f5e',
       debris_iridium: '#fb923c',
@@ -1054,7 +1285,7 @@ export default function SatelliteGlobe() {
       geo: '#64748b'
     };
     
-    let color = (d.group && groupColorMap[d.group]) || '#38bdf8';
+    let color = (d.group && groupColorMap[d.group]) || '#ffffff'; // Default to white
     const opacity = isSearched ? 1.0 : 0.12;
     
     const group = new THREE.Group();
@@ -1065,21 +1296,20 @@ export default function SatelliteGlobe() {
       satrec: d.satrec
     };
 
-    // 1. Visual dot (represented as a self-luminous glowing sphere)
+    // 1. Visual dot (represented as a self-luminous glowing sprite)
     const visualColor = isSelected ? '#ffffff' : color;
-    const visualMat = getSharedMaterial(visualColor, opacity);
-    const visualMesh = new THREE.Mesh(dotGeometry, visualMat);
-    group.add(visualMesh);
-
-    // 2. Large invisible collision zone for easy clicking on spinning globe
-    const collisionMesh = new THREE.Mesh(collisionGeometry, collisionMaterial);
-    group.add(collisionMesh);
+    const spriteMat = getSharedSpriteMaterial(visualColor, opacity);
+    const sprite = new THREE.Sprite(spriteMat);
+    // Scale the sprite size to make it look like a sharp, distinct glowing dot
+    const size = isSelected ? 4.5 : 2.0;
+    sprite.scale.set(size, size, 1.0);
+    group.add(sprite);
 
     // Dynamic scaling (Selected dot is larger and pulses more strongly)
-    const baseScale = isSelected ? 0.35 : 0.18;
+    const baseScale = isSelected ? 0.35 : 0.16;
     group.scale.set(baseScale, baseScale, baseScale);    // We update staggered based on dynamic frame interval
     // We use a random offset so that satellites are distributed evenly across frames
-    const frameOffset = Math.floor(Math.random() * 120);
+    const frameOffset = Math.floor(Math.random() * 180);
     let frameCount = frameOffset;
 
     group.onBeforeRender = () => {
@@ -1087,12 +1317,16 @@ export default function SatelliteGlobe() {
       
       // Determine update rate dynamically based on time multiplier to keep motion smooth
       const mult = timeMultiplierRef.current;
-      let updateInterval = 60;
-      if (mult > 60) updateInterval = 5;
-      else if (mult > 10) updateInterval = 20;
+      let updateInterval = 120; // 2 seconds between updates in real time
+      if (mult > 60) updateInterval = 10;
+      else if (mult > 10) updateInterval = 40;
       
       if (observationTargetRef.current === 'moon') {
-        updateInterval = 2; // Lunar satellites move in real-time, update faster!
+        updateInterval = 4; // Lunar updates
+      }
+
+      if (isSelected) {
+        updateInterval = 1; // Selected satellite moves smoothly at 60 FPS
       }
 
       // Update position once every updateInterval frames
@@ -1100,7 +1334,7 @@ export default function SatelliteGlobe() {
         if (observationTargetRef.current === 'moon' && d.lunarOrbit) {
           // Keplerian lunar propagation
           const orbit = d.lunarOrbit;
-          const now = simTimeRef.current || new Date();
+          const now = simTimeRef.current;
           const t = now.getTime() / 1000; // time in seconds
           
           // Calculate angle based on period
@@ -1116,8 +1350,8 @@ export default function SatelliteGlobe() {
           group.position.set(x, y, z);
         } else if (group.userData.satrec) {
           // Earth TLE propagation
-          const now = simTimeRef.current || new Date();
-          const gmst = satellite.gstime(now);
+          const now = simTimeRef.current;
+          const gmst = currentGmstRef.current; // Use cached GMST to avoid redundant calculations
           const posVel = satellite.propagate(group.userData.satrec, now);
           
           if (posVel && posVel.position && typeof posVel.position !== 'boolean') {
@@ -1139,10 +1373,10 @@ export default function SatelliteGlobe() {
         }
       }
 
-      // Pulse animation
+      // Pulse & Twinkle animation
       const time = Date.now() * 0.0035;
       const phase = group.userData?.phase || 0;
-      const pulse = 1.0 + Math.sin(time + phase) * (isSelected ? 0.45 : 0.35);
+      const pulse = 1.0 + Math.sin(time * 0.8 + phase) * (isSelected ? 0.45 : 0.3);
       
       let shadowFactor = 1.0;
       if (sunVectorRef.current) {
@@ -1153,7 +1387,10 @@ export default function SatelliteGlobe() {
         }
       }
       
-      const finalScale = baseScale * pulse * shadowFactor;
+      const twinkleTime = Date.now() * 0.007; // faster speed for twinkling/blinking
+      const twinkle = isSelected ? 1.0 : (0.75 + Math.sin(twinkleTime * 1.6 + phase * 2.5) * 0.45);
+      
+      const finalScale = baseScale * pulse * shadowFactor * twinkle;
       group.scale.set(finalScale, finalScale, finalScale);
     };
 
@@ -1165,76 +1402,181 @@ export default function SatelliteGlobe() {
 
   return (
     <div className="absolute inset-0 bg-[#0e131f] flex overflow-hidden">
-      {/* Landing Page Side Panel (Right) */}
+      {/* Landing Page Center Dashboard Overlay */}
       <div 
-        className={`fixed top-0 right-0 h-full w-full sm:w-[460px] bg-slate-950/45 backdrop-blur-2xl border-l border-white/10 p-6 flex flex-col justify-between z-30 transition-transform duration-1000 ease-in-out pointer-events-auto overflow-y-auto ${
-          showLanding ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed inset-0 bg-[#0e131f]/75 backdrop-blur-md flex items-center justify-center z-30 transition-all duration-700 ease-in-out pointer-events-auto p-4 sm:p-6 md:p-8 overflow-y-auto ${
+          showLanding ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
         }`}
       >
-        <div className="space-y-6">
-          <div className="flex flex-col items-center text-center pb-2 border-b border-white/5">
-            <img src={logoImg} alt="Orbitim Logo" className="h-28 w-auto mb-4 drop-shadow-[0_0_15px_rgba(59,130,246,0.3)] animate-pulse" />
-            <div className="flex items-center gap-2 text-blue-400 font-bold tracking-widest text-[10px] uppercase mb-1">
-              <Radio className="h-3.5 w-3.5 animate-pulse" /> Telemetry Control Grid
-            </div>
-            <h1 className="text-4xl font-black tracking-tight text-white leading-none uppercase">
-              ORBITIM <span className="bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">3D</span>
-            </h1>
-            <p className="text-white/50 text-xs mt-2 leading-relaxed max-w-sm">
-              Welcome to the central observation hub for Earth's artificial satellite shell. Orbitim 3D parses live orbital data feeds to propagate and render over 12,000 active objects in real-time.
-            </p>
-          </div>
+        <div className="w-full max-w-5xl bg-slate-950/80 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-[0_0_50px_rgba(59,130,246,0.2)] flex flex-col md:flex-row overflow-hidden max-h-[90vh] md:max-h-[85vh]">
+          {/* Left Column: Branding, Status, and CTA */}
+          <div className="w-full md:w-[42%] p-6 md:p-8 flex flex-col justify-between border-b md:border-b-0 md:border-r border-white/10 bg-slate-950/40">
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="flex flex-col items-center md:items-start text-center md:text-left">
+                <div className="flex items-center gap-2 mb-3">
+                  <img src={logoImg} alt="Orbitim Logo" className="h-16 w-auto drop-shadow-[0_0_12px_rgba(59,130,246,0.4)] animate-pulse" />
+                  <div>
+                    <div className="flex items-center gap-1 text-[8px] text-blue-400 font-black tracking-widest uppercase">
+                      <Radio className="h-2.5 w-2.5 animate-pulse" /> Live Telemetry Grid
+                    </div>
+                    <h1 className="text-3xl font-black tracking-tight text-white leading-none uppercase mt-0.5">
+                      ORBITIM <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-emerald-400 bg-clip-text text-transparent">3D</span>
+                    </h1>
+                  </div>
+                </div>
+                <p className="text-white/60 text-xs leading-relaxed max-w-sm mt-1">
+                  Earth's orbital shell is crowded. Orbitim 3D dynamically propagates and visualizes satellite systems, constellation pathways, and space debris in real-time.
+                </p>
+              </div>
 
-          {/* Starlink realistic generated graphic */}
-          <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-blue-500/20 shadow-lg group">
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent z-10" />
-            <img 
-              src={starlinkImg} 
-              alt="Starlink Satellite Render" 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-            />
-            <div className="absolute bottom-3 left-3 z-20 font-mono text-[9px] text-blue-400 space-y-0.5">
-              <div className="text-white/60 font-sans text-xs font-bold uppercase tracking-wide">Starlink v2.0 Array</div>
-              <div>ALTITUDE: ~550 KM | SPEED: ~7.6 KM/S</div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-[10px] text-white/40 font-bold tracking-wider uppercase border-b border-white/5 pb-2">Core Telemetry Modules</h3>
-            <div className="grid grid-cols-1 gap-3">
-              <div className="flex gap-3 items-start bg-white/5 p-3 rounded-xl border border-white/5">
-                <Cpu className="h-5 w-5 text-blue-400 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-xs font-bold text-white tracking-wide">60 FPS Physics Engine</h4>
-                  <p className="text-[10px] text-white/50 leading-relaxed mt-0.5">Local orbital mechanics run frame-by-frame on your GPU using LOD optimizations.</p>
+              {/* Graphic Banner */}
+              <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-blue-500/20 shadow-lg group hidden sm:block">
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent z-10" />
+                <img 
+                  src={starlinkImg} 
+                  alt="Starlink Satellite Render" 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute bottom-2.5 left-3 z-20 font-mono text-[8px] text-blue-400 space-y-0.5">
+                  <div className="text-white/80 font-sans text-xs font-bold uppercase tracking-wide">Starlink v2.0 Array</div>
+                  <div>ALTITUDE: ~550 KM | SPEED: ~7.6 KM/S</div>
                 </div>
               </div>
-              <div className="flex gap-3 items-start bg-white/5 p-3 rounded-xl border border-white/5">
-                <Layers className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-xs font-bold text-white tracking-wide">Constellation Filters</h4>
-                  <p className="text-[10px] text-white/50 leading-relaxed mt-0.5">Toggle between Starlink, GPS, weather, or geostationary arrays.</p>
-                </div>
-              </div>
-              <div className="flex gap-3 items-start bg-white/5 p-3 rounded-xl border border-white/5">
-                <Compass className="h-5 w-5 text-purple-400 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-xs font-bold text-white tracking-wide">Target Locking</h4>
-                  <p className="text-[10px] text-white/50 leading-relaxed mt-0.5">Click any orbital dot to lock telemetry and draw projected paths.</p>
+
+              {/* Tech Spec tags */}
+              <div className="space-y-2">
+                <span className="text-[9px] text-white/30 font-bold tracking-widest uppercase">Telemetry Specs</span>
+                <div className="flex flex-wrap gap-1.5 font-mono text-[9px]">
+                  <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-300 rounded-md">SGP4 PROPAGATOR</span>
+                  <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 rounded-md">CELESTRAK LIVE FEEDS</span>
+                  <span className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 text-purple-300 rounded-md">THREEJS / WEBGL</span>
+                  <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-md">LUNAR PROPAGATION</span>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="pt-4 border-t border-white/5">
-          <button
-            onClick={() => setShowLanding(false)}
-            className="w-full bg-blue-600 hover:bg-blue-500 hover:shadow-blue-500/20 text-white font-bold text-sm tracking-widest uppercase py-4 px-6 rounded-2xl transition-all shadow-lg flex items-center justify-center gap-3 cursor-pointer group"
-          >
-            <Play className="h-4 w-4 fill-white group-hover:scale-110 transition-transform" />
-            Initialize Telemetry Matrix
-          </button>
+            {/* Launch Action */}
+            <div className="pt-6 border-t border-white/5 mt-6 md:mt-0">
+              <button
+                onClick={() => setShowLanding(false)}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 hover:shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:-translate-y-0.5 text-white font-bold text-xs tracking-widest uppercase py-3.5 px-6 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2.5 cursor-pointer group active:translate-y-0"
+              >
+                <Play className="h-3.5 w-3.5 fill-white group-hover:scale-110 transition-transform" />
+                Launch Telemetry Matrix
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: Capabilities details list */}
+          <div className="w-full md:w-[58%] p-6 md:p-8 flex flex-col justify-between overflow-y-auto bg-slate-950/20">
+            <div className="space-y-4">
+              <div className="border-b border-white/5 pb-3">
+                <span className="text-[10px] text-blue-400 font-black tracking-widest uppercase">System Capabilities</span>
+                <h2 className="text-lg font-bold text-white uppercase mt-0.5">Implemented Core Modules</h2>
+              </div>
+
+              {/* Scrollable list of feature cards */}
+              <div className="space-y-3 pr-1 max-h-[45vh] md:max-h-[58vh] overflow-y-auto custom-scrollbar">
+                {/* SGP4 Physics Engine */}
+                <div className="group flex gap-3.5 items-start bg-white/3 hover:bg-white/5 p-3.5 rounded-xl border border-white/5 hover:border-blue-500/20 transition-all">
+                  <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg group-hover:scale-105 transition-transform">
+                    <Cpu className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white tracking-wide uppercase">SGP4 Orbital Propagator (60 FPS)</h3>
+                    <p className="text-[10px] text-white/50 leading-relaxed mt-1">
+                      Computes precise real-time positions and velocities locally on the GPU/CPU using live TLE (Two-Line Element) satellite data feeds.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Constellation Filters */}
+                <div className="group flex gap-3.5 items-start bg-white/3 hover:bg-white/5 p-3.5 rounded-xl border border-white/5 hover:border-emerald-500/20 transition-all">
+                  <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg group-hover:scale-105 transition-transform">
+                    <Layers className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white tracking-wide uppercase">Multi-Constellation Layers</h3>
+                    <p className="text-[10px] text-white/50 leading-relaxed mt-1">
+                      Filter over 12,000 active objects including GPS, GLONASS, Galileo, Weather grids, OneWeb, and Space Debris fields.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Target Locking */}
+                <div className="group flex gap-3.5 items-start bg-white/3 hover:bg-white/5 p-3.5 rounded-xl border border-white/5 hover:border-purple-500/20 transition-all">
+                  <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg group-hover:scale-105 transition-transform">
+                    <Compass className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white tracking-wide uppercase">Telemetry Locking & Signal Footprints</h3>
+                    <p className="text-[10px] text-white/50 leading-relaxed mt-1">
+                      Click any satellite to track details, render 3D footprint cones, project past/future orbit paths, and visualize nadir downlink streams.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Lunar Orbit Observation */}
+                <div className="group flex gap-3.5 items-start bg-white/3 hover:bg-white/5 p-3.5 rounded-xl border border-white/5 hover:border-amber-500/20 transition-all">
+                  <div className="p-2 bg-amber-500/10 text-amber-400 rounded-lg group-hover:scale-105 transition-transform">
+                    <GlobeIcon className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white tracking-wide uppercase">Lunar Keplerian observation</h3>
+                    <p className="text-[10px] text-white/50 leading-relaxed mt-1">
+                      Toggle observation targets to view custom-propagated Lunar orbiters, including LRO, Danuri, Chandrayaan-2, and Queqiao relay networks.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Starlink Laser ISL */}
+                <div className="group flex gap-3.5 items-start bg-white/3 hover:bg-white/5 p-3.5 rounded-xl border border-white/5 hover:border-cyan-500/20 transition-all">
+                  <div className="p-2 bg-cyan-500/10 text-cyan-400 rounded-lg group-hover:scale-105 transition-transform">
+                    <Zap className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white tracking-wide uppercase">Starlink Laser Mesh (ISL)</h3>
+                    <p className="text-[10px] text-white/50 leading-relaxed mt-1">
+                      Simulate and visualize inter-satellite laser links (ISL) connecting active Starlink fleets dynamically as they orbit.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Proximity & Collision Guard */}
+                <div className="group flex gap-3.5 items-start bg-white/3 hover:bg-white/5 p-3.5 rounded-xl border border-white/5 hover:border-red-500/20 transition-all">
+                  <div className="p-2 bg-red-500/10 text-red-400 rounded-lg group-hover:scale-105 transition-transform">
+                    <ShieldAlert className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white tracking-wide uppercase">Autonomic Collision Guard</h3>
+                    <p className="text-[10px] text-white/50 leading-relaxed mt-1">
+                      Runs background scans of distance vectors between active orbits, flagging potential close approach encounters and collision alerts.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Time Warp Engine */}
+                <div className="group flex gap-3.5 items-start bg-white/3 hover:bg-white/5 p-3.5 rounded-xl border border-white/5 hover:border-pink-500/20 transition-all">
+                  <div className="p-2 bg-pink-500/10 text-pink-400 rounded-lg group-hover:scale-105 transition-transform">
+                    <Clock className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white tracking-wide uppercase">Time Warp & Playback Engine</h3>
+                    <p className="text-[10px] text-white/50 leading-relaxed mt-1">
+                      Warp time flow up to 300x acceleration to inspect orbit progression, pause simulation to lock vectors, or synchronize back to real-time.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Sources */}
+            <div className="text-[9px] text-gray-500 font-mono border-t border-white/5 pt-3.5 mt-4 text-center md:text-left flex flex-col sm:flex-row justify-between gap-2">
+              <span>DATA SOURCES: CELESTRAK (TLE) · NASA BLUE MARBLE</span>
+              <span>SGP4 ALGORITHMS (SATELLITE.JS)</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1310,6 +1652,14 @@ export default function SatelliteGlobe() {
             >
               MOON
             </button>
+            <button
+              onClick={() => setObservationTarget('sun')}
+              className={`text-[9px] font-mono font-bold px-3 py-1 rounded-md transition-all ${
+                observationTarget === 'sun' ? 'bg-amber-600 text-white shadow' : 'text-white/40 hover:text-white/70'
+              }`}
+            >
+              SUN
+            </button>
           </div>
         </div>
 
@@ -1343,6 +1693,16 @@ export default function SatelliteGlobe() {
                   <span>Lunar Satellites</span>
                 </div>
                 <span className="text-[10px] font-mono text-purple-300 font-bold">{LUNAR_SATELLITES.length} ACTIVE</span>
+              </button>
+            ) : observationTarget === 'sun' ? (
+              <button
+                className="text-left text-xs py-2.5 px-3.5 rounded-xl bg-amber-600/10 border border-amber-500/20 text-white font-medium flex items-center justify-between pointer-events-none"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24] animate-pulse" />
+                  <span>Solar Probes</span>
+                </div>
+                <span className="text-[10px] font-mono text-amber-300 font-bold">{SOLAR_PROBES.length} ACTIVE</span>
               </button>
             ) : (
               GROUPS.map((g) => {
@@ -1515,13 +1875,19 @@ export default function SatelliteGlobe() {
               <div className="bg-[#181f30]/40 border border-white/5 p-3 rounded-lg flex flex-col">
                 <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">PERIOD</span>
                 <span className="text-sm font-mono text-white mt-1">
-                  {satrec ? ((2 * Math.PI) / satrec.no).toFixed(1) : '94.0'} min
+                  {(selectedSat as any).lunarOrbit 
+                    ? ((selectedSat as any).lunarOrbit.period >= 36000 
+                      ? ((selectedSat as any).lunarOrbit.period / 3600).toFixed(1) + ' hr' 
+                      : ((selectedSat as any).lunarOrbit.period / 60).toFixed(1) + ' min') 
+                    : (satrec ? ((2 * Math.PI) / satrec.no).toFixed(1) + ' min' : '94.0 min')}
                 </span>
               </div>
               <div className="bg-[#181f30]/40 border border-white/5 p-3 rounded-lg flex flex-col">
                 <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">INCLINATION</span>
                 <span className="text-sm font-mono text-white mt-1">
-                  {satrec ? ((satrec.inclo * 180) / Math.PI).toFixed(2) : '53.16'}°
+                  {(selectedSat as any).lunarOrbit
+                    ? ((selectedSat as any).lunarOrbit.inclination).toFixed(2)
+                    : (satrec ? ((satrec.inclo * 180) / Math.PI).toFixed(2) : '53.16')}°
                 </span>
               </div>
             </div>
@@ -1605,6 +1971,14 @@ export default function SatelliteGlobe() {
                 >
                   MOON
                 </button>
+                <button
+                  onClick={() => setObservationTarget('sun')}
+                  className={`text-[8px] font-mono font-bold px-2 py-0.5 rounded transition-all ${
+                    observationTarget === 'sun' ? 'bg-amber-600 text-white' : 'text-white/40'
+                  }`}
+                >
+                  SUN
+                </button>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -1682,6 +2056,16 @@ export default function SatelliteGlobe() {
                     <span>Lunar Satellites</span>
                   </div>
                   <span className="text-[10px] font-mono text-purple-300 font-bold">{LUNAR_SATELLITES.length} ACTIVE</span>
+                </button>
+              ) : observationTarget === 'sun' ? (
+                <button
+                  className="text-left text-xs py-2.5 px-3.5 rounded-xl bg-amber-600/10 border border-amber-500/20 text-white font-medium flex items-center justify-between pointer-events-none"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24] animate-pulse" />
+                    <span>Solar Probes</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-amber-300 font-bold">{SOLAR_PROBES.length} ACTIVE</span>
                 </button>
               ) : (
                 GROUPS.map((g) => {
@@ -1790,13 +2174,19 @@ export default function SatelliteGlobe() {
                   <div className="bg-[#181f30]/40 border border-white/5 p-3 rounded-lg flex flex-col">
                     <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">PERIOD</span>
                     <span className="text-sm font-mono text-white mt-1">
-                      {satrec ? ((2 * Math.PI) / satrec.no).toFixed(1) : '94.0'} min
+                      {(selectedSat as any).lunarOrbit 
+                        ? ((selectedSat as any).lunarOrbit.period >= 36000 
+                          ? ((selectedSat as any).lunarOrbit.period / 3600).toFixed(1) + ' hr' 
+                          : ((selectedSat as any).lunarOrbit.period / 60).toFixed(1) + ' min') 
+                        : (satrec ? ((2 * Math.PI) / satrec.no).toFixed(1) + ' min' : '94.0 min')}
                     </span>
                   </div>
                   <div className="bg-[#181f30]/40 border border-white/5 p-3 rounded-lg flex flex-col">
                     <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">INCLINATION</span>
                     <span className="text-sm font-mono text-white mt-1">
-                      {satrec ? ((satrec.inclo * 180) / Math.PI).toFixed(2) : '53.16'}°
+                      {(selectedSat as any).lunarOrbit
+                        ? ((selectedSat as any).lunarOrbit.inclination).toFixed(2)
+                        : (satrec ? ((satrec.inclo * 180) / Math.PI).toFixed(2) : '53.16')}°
                     </span>
                   </div>
                 </div>
@@ -1846,22 +2236,28 @@ export default function SatelliteGlobe() {
       {texturesLoaded && (
         <Globe
           ref={globeRef}
-          globeMaterial={observationTarget === 'earth' ? (globeMaterial || undefined) : undefined}
+          globeMaterial={
+            observationTarget === 'earth' 
+              ? (globeMaterial || undefined) 
+              : observationTarget === 'moon' 
+                ? (moonMaterial || undefined) 
+                : (sunMaterial || undefined)
+          }
           backgroundColor="#0e131f"
           
           showAtmosphere={observationTarget === 'earth'}
-          atmosphereColor="#58c0ff" 
-          atmosphereAltitude={0.25}
+          atmosphereColor="#3b82f6" 
+          atmosphereAltitude={0.09}
 
           globeImageUrl={
             observationTarget === 'earth' 
               ? '//unpkg.com/three-globe/example/img/earth-blue-marble.jpg'
-              : '//unpkg.com/three-globe/example/img/earth-lunar-surface.jpg'
+              : 'https://vasturiano.github.io/react-globe.gl/example/moon-landing-sites/lunar_surface.jpg'
           }
           bumpImageUrl={
             observationTarget === 'earth'
               ? '//unpkg.com/three-globe/example/img/earth-topology.png'
-              : '//unpkg.com/three-globe/example/img/earth-lunar-surface.jpg'
+              : 'https://vasturiano.github.io/react-globe.gl/example/moon-landing-sites/lunar_bumpmap.jpg'
           }
 
           // Satellites 3D custom models
