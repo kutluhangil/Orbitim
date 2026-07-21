@@ -5,23 +5,10 @@ import { BODY_FACTS } from '../data/bodyFacts';
 import { useFlight } from '../flight/useFlight';
 import { useSimTime } from '../scene/useSimTime';
 import { useIsCompact } from './useMediaQuery';
+import { Row } from './Row';
 
 function formatKm(km: number): string {
   return `${Math.round(km).toLocaleString('en-US')} km`;
-}
-
-interface RowProps {
-  label: string;
-  value: string;
-}
-
-function Row({ label, value }: RowProps) {
-  return (
-    <div className="flex items-baseline justify-between gap-6 border-b border-white/5 py-2 last:border-b-0">
-      <dt className="text-[10px] uppercase tracking-[0.18em] text-white/35">{label}</dt>
-      <dd className="text-right text-[13px] tabular-nums text-white/85">{value}</dd>
-    </div>
-  );
 }
 
 /**

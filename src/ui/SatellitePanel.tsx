@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useFlight } from '../flight/useFlight';
-import { SATELLITE_GROUPS, useSatelliteGroups } from '../scene/satelliteGroups';
+import { ISS_NORAD_ID, SATELLITE_GROUPS, useSatelliteGroups } from '../scene/satelliteGroups';
+import { useSatelliteSelection } from '../scene/satelliteSelection';
 import { useIsCompact } from './useMediaQuery';
 
 /**
@@ -17,17 +18,46 @@ export function SatellitePanel() {
   const target = useFlight((s) => s.target);
   const phase = useFlight((s) => s.phase);
   const enabled = useSatelliteGroups((s) => s.enabled);
-  const counts = useSatelliteGroups((s) => s.counts);
+  const sets = useSatelliteGroups((s) => s.sets);
   const toggle = useSatelliteGroups((s) => s.toggle);
   const compact = useIsCompact();
   // Shut until asked for, on both layouts: fourteen constellations is a taller
   // list than the corner it sits in, and open by default it lands on the body
   // rail on a desktop and on the dossier on a phone.
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Puts the camera on the station itself. The stations set is loaded on demand
+   * rather than assumed present: the switchboard can be reached with the group
+   * turned off, and the button has to work from there too.
+   */
+  const rideTheStation = async () => {
+    const groups = useSatelliteGroups.getState();
+    if (!groups.enabled.includes('stations')) groups.toggle('stations');
+
+    try {
+      const stations = await groups.load('stations');
+      const iss = stations.find((item) => Number(item.satrec.satnum) === ISS_NORAD_ID);
+      if (!iss) {
+        setError(`ISS (NORAD ${ISS_NORAD_ID}) is not in the loaded stations element set`);
+        return;
+      }
+
+      setError(null);
+      setOpen(false);
+      const selection = useSatelliteSelection.getState();
+      selection.select({ groupId: 'stations', data: iss });
+      selection.setFollowing(true);
+      useFlight.getState().refocus();
+    } catch (cause) {
+      setError(`Could not load the stations element set: ${cause instanceof Error ? cause.message : String(cause)}`);
+    }
+  };
 
   if (target !== 'earth' || phase === 'overview') return null;
 
-  const total = enabled.reduce((sum, id) => sum + (counts[id] ?? 0), 0);
+  const total = enabled.reduce((sum, id) => sum + (sets[id]?.length ?? 0), 0);
   const list = (
     <ul className="grid grid-cols-2 gap-x-2 px-2 pb-3 md:block md:max-h-[46vh] md:overflow-y-auto md:pb-2">
       {SATELLITE_GROUPS.map((group) => {
@@ -48,14 +78,29 @@ export function SatellitePanel() {
                 aria-hidden
               />
               <span className="flex-1 truncate">{group.name}</span>
-              {active && counts[group.id] !== undefined && (
-                <span className="tabular-nums text-[10px] text-white/30">{counts[group.id]}</span>
+              {active && sets[group.id] !== undefined && (
+                <span className="tabular-nums text-[10px] text-white/30">{sets[group.id].length}</span>
               )}
             </button>
           </li>
         );
       })}
     </ul>
+  );
+
+  /* One named destination among fourteen anonymous swarms. It sits above the
+     list because it is the thing most visitors came here for. */
+  const station = (
+    <div className="px-2 pb-3 pt-1 md:px-3">
+      <button
+        type="button"
+        onClick={rideTheStation}
+        className="flex h-11 w-full items-center justify-center rounded-lg border border-sky-300/25 text-[11px] uppercase tracking-[0.2em] text-sky-200/80 transition-colors hover:border-sky-300/50 hover:text-sky-100 md:h-9"
+      >
+        Ride the ISS
+      </button>
+      {error && <p className="mt-2 text-[11px] leading-relaxed text-red-300/80">{error}</p>}
+    </div>
   );
 
   if (compact) {
@@ -91,6 +136,7 @@ export function SatellitePanel() {
                 Close
               </button>
             </header>
+            {station}
             {list}
           </section>
         )}
@@ -115,7 +161,12 @@ export function SatellitePanel() {
         <span className="tabular-nums text-white/35">{total.toLocaleString('en-US')}</span>
       </button>
 
-      {open && list}
+      {open && (
+        <>
+          {station}
+          {list}
+        </>
+      )}
     </section>
   );
 }

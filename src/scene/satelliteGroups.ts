@@ -1,4 +1,8 @@
 import { create } from 'zustand';
+import { fetchSatellitesByGroup, type SatelliteData } from '../services/tle';
+
+/** NORAD catalogue number of the International Space Station. */
+export const ISS_NORAD_ID = 25544;
 
 export interface SatelliteGroup {
   /** CelesTrak group id, passed straight to the TLE service. */
@@ -33,20 +37,47 @@ export const SATELLITE_GROUPS: readonly SatelliteGroup[] = [
 interface SatelliteState {
   /** Group ids currently drawn. */
   enabled: string[];
-  /** Loaded object count per group, for the panel readout. */
-  counts: Record<string, number>;
+  /**
+   * Element sets per loaded group. Shared rather than held by the drawing
+   * component, so the UI can look a satellite up — the ISS, say — without the
+   * layer being on screen.
+   */
+  sets: Record<string, SatelliteData[]>;
   toggle: (id: string) => void;
-  setCount: (id: string, count: number) => void;
+  load: (id: string) => Promise<SatelliteData[]>;
 }
 
-export const useSatelliteGroups = create<SatelliteState>((set) => ({
+/** Requests in flight, so a group is never fetched twice concurrently. */
+const pending = new Map<string, Promise<SatelliteData[]>>();
+
+export const useSatelliteGroups = create<SatelliteState>((set, get) => ({
   enabled: SATELLITE_GROUPS.filter((g) => g.defaultOn).map((g) => g.id),
-  counts: {},
+  sets: {},
   toggle: (id) =>
     set((s) => ({
       enabled: s.enabled.includes(id) ? s.enabled.filter((g) => g !== id) : [...s.enabled, id]
     })),
-  setCount: (id, count) => set((s) => ({ counts: { ...s.counts, [id]: count } }))
+  load: (id) => {
+    const loaded = get().sets[id];
+    if (loaded) return Promise.resolve(loaded);
+
+    const inFlight = pending.get(id);
+    if (inFlight) return inFlight;
+
+    const request = fetchSatellitesByGroup(id).then(
+      (result) => {
+        pending.delete(id);
+        set((s) => ({ sets: { ...s.sets, [id]: result.satellites } }));
+        return result.satellites;
+      },
+      (error) => {
+        pending.delete(id);
+        throw error;
+      }
+    );
+    pending.set(id, request);
+    return request;
+  }
 }));
 
 export function getSatelliteGroup(id: string): SatelliteGroup {

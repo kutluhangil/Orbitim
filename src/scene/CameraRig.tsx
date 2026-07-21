@@ -6,11 +6,23 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { useFlight } from '../flight/useFlight';
 import { isTouchPrimary } from '../lib/device';
 import { sceneRadiusOf, type PositionRegistry } from './bodyPositions';
+import { satelliteFocus, useSatelliteSelection } from './satelliteSelection';
+import { KM_TO_SCENE } from './satelliteFrame';
 
 /** Seconds a flight leg takes, regardless of distance travelled. */
 const FLIGHT_SECONDS = 2.5;
 /** Camera distance when parked at a body, in body radii. */
 const ORBIT_RADII = 3.2;
+/**
+ * Camera distance when riding a satellite, km, and where it sits relative to the
+ * object's own motion: mostly behind, partly above. Straight out from the planet
+ * would put the camera's own horizon outside the frame at any distance close
+ * enough to feel like riding, and the surface would read as flat texture. Looking
+ * forward along the track instead brings the limb into shot.
+ */
+const SATELLITE_STANDOFF = 1600 * KM_TO_SCENE;
+const CHASE_BEHIND = 0.8;
+const CHASE_ABOVE = 0.6;
 /** Camera position and look-at point of the whole-system view. */
 const OVERVIEW_POSITION = new THREE.Vector3(0, 340, 720);
 /** Vertical field of view the scene was framed at, and the aspect it assumes. */
@@ -75,13 +87,17 @@ export function CameraRig({ registry }: CameraRigProps) {
   const elapsed = useRef(0);
   const startEye = useRef(new THREE.Vector3());
   const startLook = useRef(new THREE.Vector3());
-  const lastTargetPosition = useRef(new THREE.Vector3());
+  /** Point the camera was framing last frame, whatever kind of thing it was. */
+  const focus = useRef(new THREE.Vector3());
+  const lastFocus = useRef(new THREE.Vector3());
   const arcLift = useRef(new THREE.Vector3());
   const previousPhase = useRef<string>('overview');
   const posed = useRef(false);
 
   const scratchEye = new THREE.Vector3();
   const scratchLook = new THREE.Vector3();
+  const scratchShift = new THREE.Vector3();
+  const origin = new THREE.Vector3();
 
   useFrame((_, delta) => {
     const { phase, target, setProgress, arrive } = useFlight.getState();
@@ -97,8 +113,20 @@ export function CameraRig({ registry }: CameraRigProps) {
       posed.current = true;
     }
 
-    const destinationLook = target ? registry.get(target)!.clone() : new THREE.Vector3(0, 0, 0);
-    const destinationDistance = target ? sceneRadiusOf(target) * ORBIT_RADII : overviewEye.current.length();
+    // A followed satellite outranks the body it orbits: the camera rides the
+    // object, and the planet becomes what it is seen against.
+    const riding = useSatelliteSelection.getState().following && satelliteFocus.tracked;
+    const anchor = target ? registry.get(target)! : origin;
+
+    const destinationLook = focus.current;
+    if (riding) destinationLook.copy(satelliteFocus.position);
+    else destinationLook.copy(anchor);
+
+    const destinationDistance = riding
+      ? SATELLITE_STANDOFF
+      : target
+        ? sceneRadiusOf(target) * ORBIT_RADII
+        : overviewEye.current.length();
 
     if (phase === 'flying') {
       if (previousPhase.current !== 'flying') {
@@ -116,19 +144,34 @@ export function CameraRig({ registry }: CameraRigProps) {
       const eased = easeInOutCubic(t);
       setProgress(eased);
 
-      // Arrive on the sunlit side: the approach vector points from the body back
-      // towards the Sun, lifted slightly so the terminator stays in frame.
-      const approach = destinationLook.lengthSq() > 0 ? destinationLook : new THREE.Vector3(-1, 0, -1);
-      const destinationEye = target
-        ? scratchEye
-            .copy(approach)
-            .negate()
-            .normalize()
-            .setY(0.35)
-            .normalize()
-            .multiplyScalar(destinationDistance)
-            .add(destinationLook)
-        : scratchEye.copy(overviewEye.current);
+      let destinationEye: THREE.Vector3;
+      if (riding) {
+        // Trail the object: behind it along its own track and above it along the
+        // planet's radius, so the shot looks forward over the ground it is about
+        // to cross rather than straight down at the ground it is over.
+        const above = scratchShift.copy(destinationLook).sub(anchor).normalize();
+        destinationEye = scratchEye
+          .copy(satelliteFocus.forward)
+          .multiplyScalar(-CHASE_BEHIND)
+          .addScaledVector(above, CHASE_ABOVE)
+          .normalize()
+          .multiplyScalar(destinationDistance)
+          .add(destinationLook);
+      } else if (target) {
+        // Arrive on the sunlit side: the approach vector points from the body
+        // back towards the Sun, lifted slightly so the terminator stays in frame.
+        const approach = destinationLook.lengthSq() > 0 ? destinationLook : new THREE.Vector3(-1, 0, -1);
+        destinationEye = scratchEye
+          .copy(approach)
+          .negate()
+          .normalize()
+          .setY(0.35)
+          .normalize()
+          .multiplyScalar(destinationDistance)
+          .add(destinationLook);
+      } else {
+        destinationEye = scratchEye.copy(overviewEye.current);
+      }
 
       camera.position.lerpVectors(startEye.current, destinationEye, eased);
       // Quadratic bezier lift, zero at both ends.
@@ -139,15 +182,14 @@ export function CameraRig({ registry }: CameraRigProps) {
 
       if (t >= 1) arrive();
     } else if (phase === 'orbiting' && target) {
-      // Follow the body without fighting the user's orbit input: translate the
-      // camera by exactly the body's own motion this frame.
-      const current = registry.get(target)!;
-      const shift = scratchEye.copy(current).sub(lastTargetPosition.current);
+      // Follow the focus without fighting the user's orbit input: translate the
+      // camera by exactly the motion of whatever it is framing this frame.
+      const shift = scratchShift.copy(destinationLook).sub(lastFocus.current);
       camera.position.add(shift);
-      orbitControls.target.copy(current);
+      orbitControls.target.copy(destinationLook);
     }
 
-    if (target) lastTargetPosition.current.copy(registry.get(target)!);
+    if (target) lastFocus.current.copy(destinationLook);
 
     // Keep depth precision usable across eight orders of magnitude of distance.
     const perspective = camera as THREE.PerspectiveCamera;
