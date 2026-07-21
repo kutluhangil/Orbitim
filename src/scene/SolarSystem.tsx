@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { ALL_BODIES, PLANETS, type BodyId } from '../lib/ephemeris/bodies';
 import { useFlight } from '../flight/useFlight';
+import { AsteroidBelt } from './AsteroidBelt';
 import { Body } from './Body';
 import { BodyLabels } from './BodyLabels';
 import { OrbitPath } from './OrbitPath';
@@ -43,6 +44,8 @@ export function SolarSystem() {
       {PLANETS.map((planet) => (
         <OrbitPath key={planet.id} id={planet.id} date={epoch.current} highlighted={target === planet.id} />
       ))}
+
+      <AsteroidBelt />
 
       {ALL_BODIES.map((body) => (
         <Body key={body.id} id={body.id} registry={registry} onSelect={(id: BodyId) => flyTo(id)} />
