@@ -2,7 +2,7 @@ import { gstime } from 'satellite.js';
 import { getBodyRecord, type BodyId } from './bodies';
 
 /** J2000.0 epoch, the reference instant for all spin angles. */
-const J2000_MS = Date.UTC(2000, 0, 1, 12, 0, 0);
+export const J2000_MS = Date.UTC(2000, 0, 1, 12, 0, 0);
 
 /**
  * Spin angle of a body about its own axis at the given instant, radians.
