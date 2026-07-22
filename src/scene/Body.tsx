@@ -41,7 +41,30 @@ export function Body({ id, registry, onSelect }: BodyProps) {
   const target = useFlight((s) => s.target);
   const lod = lodFor(id, phase, target);
   const textures = useBodyTexture(id, lod);
-  const shading = useBodyShading(id, registry, ATMOSPHERES[id]?.color ?? null, textures.cloudMap);
+
+  // A ringed planet takes its own ring's shadow across it. The ring lies in the
+  // equatorial plane, so its world normal is the spin axis — the planet's axial
+  // tilt applied to straight up, fixed in world space rather than turning with
+  // the surface. Radii are carried in scene units for the shadow trace.
+  const ringShadow = useMemo(() => {
+    if (!record.rings) return null;
+    const scale = sceneRadiusOf(id);
+    const tilt = getAxialTilt(id);
+    return {
+      normal: new THREE.Vector3(0, Math.cos(tilt), Math.sin(tilt)),
+      inner: scale * record.rings.innerRadii,
+      outer: scale * record.rings.outerRadii,
+      map: textures.ringMap
+    };
+  }, [id, record.rings, textures.ringMap]);
+
+  const shading = useBodyShading(
+    id,
+    registry,
+    ATMOSPHERES[id]?.color ?? null,
+    textures.cloudMap,
+    ringShadow
+  );
   const relief = useMoonRelief(id);
   const surfaceMaterial = useMemo(
     () => (relief ? mergePatches([shading.surface, relief]) : shading.surface),

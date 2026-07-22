@@ -168,6 +168,9 @@ const AERIAL_STRENGTH = 0.55;
 /** How dark a fragment gets under the thickest cloud directly up-sun of it. */
 const CLOUD_SHADOW_STRENGTH = 0.6;
 
+/** How dark the ring shadow falls across the planet under the densest bands. */
+const RING_SHADOW_STRENGTH = 0.8;
+
 /**
  * Bound to the cloud-shadow sampler before the cloud map has loaded — a single
  * black texel reads as no cloud, so the surface stays unshadowed rather than
@@ -210,11 +213,22 @@ export interface BodyShading {
  * limb (aerial perspective); bodies without one pass `null` and keep a hard
  * edge.
  */
+export interface RingShadow {
+  /** Unit normal of the ring plane in world space (the planet's spin axis). */
+  normal: THREE.Vector3;
+  /** Inner and outer ring radii, scene units. */
+  inner: number;
+  outer: number;
+  /** Radial opacity strip, sampled the way the ring itself is. */
+  map: THREE.Texture | null;
+}
+
 export function useBodyShading(
   id: BodyId,
   registry: PositionRegistry,
   atmosphereColor?: string | null,
-  cloudShadowMap?: THREE.Texture | null
+  cloudShadowMap?: THREE.Texture | null,
+  ringShadow?: RingShadow | null
 ): BodyShading {
   const casters = useMemo(() => occludersOf(id), [id]);
   const casterRadii = useMemo(() => casters.map(sceneRadiusOf), [casters]);
@@ -224,6 +238,7 @@ export function useBodyShading(
   // its map has loaded yet — the sampler binds the black fallback until it does,
   // so the program never has to recompile when the texture arrives.
   const hasCloudShadow = !!getTextureSet(id)?.cloudMap;
+  const hasRingShadow = !!getBodyRecord(id).rings;
 
   const uniforms = useMemo(
     () => ({
@@ -236,7 +251,15 @@ export function useBodyShading(
       uCloudShadow: { value: NO_CLOUD as THREE.Texture },
       // Cloud shell altitude in scene units: the horizontal throw of a shadow is
       // this times the tangent of the sun's zenith angle.
-      uCloudReach: { value: sceneRadiusOf(id) * 0.006 }
+      uCloudReach: { value: sceneRadiusOf(id) * 0.006 },
+      // Ring geometry is written in each render below, so these are only
+      // placeholders — the memo does not depend on the ring inputs.
+      uRingCenter: { value: new THREE.Vector3() },
+      uRingNormal: { value: new THREE.Vector3(0, 1, 0) },
+      uRingInner: { value: 0 },
+      uRingOuter: { value: 0 },
+      uRingMap: { value: NO_CLOUD as THREE.Texture },
+      uHasRingMap: { value: false }
     }),
     [id, casters, atmosphereColor]
   );
@@ -244,6 +267,13 @@ export function useBodyShading(
   // The cloud map is shared with the shell and only resident at the near level,
   // so the sampler follows it in and out rather than being fixed at compile.
   uniforms.uCloudShadow.value = cloudShadowMap ?? NO_CLOUD;
+  if (ringShadow) {
+    uniforms.uRingNormal.value.copy(ringShadow.normal);
+    uniforms.uRingInner.value = ringShadow.inner;
+    uniforms.uRingOuter.value = ringShadow.outer;
+    uniforms.uRingMap.value = ringShadow.map ?? NO_CLOUD;
+    uniforms.uHasRingMap.value = !!ringShadow.map;
+  }
 
   useFrame(() => {
     for (let i = 0; i < casters.length; i++) {
@@ -251,6 +281,9 @@ export function useBodyShading(
       uniforms.uOccluders.value[i].set(centre.x, centre.y, centre.z, casterRadii[i]);
     }
     uniforms.uDriftHours.value = (useSimTime.getState().date.getTime() - J2000_MS) / 3600000;
+    // The ring plane passes through the planet's centre, which the shadow trace
+    // measures the crossing radius from.
+    if (hasRingShadow) uniforms.uRingCenter.value.copy(registry.get(id)!);
   });
 
   return useMemo(() => {
@@ -320,6 +353,39 @@ export function useBodyShading(
       #endif
     `;
 
+    // Ring shadow on the planet. The band a ring casts across the globe is the
+    // set of surface points whose line to the Sun crosses the ring plane between
+    // the inner and outer edge. The ray from this fragment towards the Sun is
+    // intersected with that plane and the crossing radius sampled against the
+    // ring's own opacity strip — the same strip the ring is drawn from, so the
+    // shadow carries the Cassini division and the fading edges rather than a
+    // hard disc.
+    const RING_DECLARATIONS = /* glsl */ `
+      uniform vec3 uRingCenter;
+      uniform vec3 uRingNormal;
+      uniform float uRingInner;
+      uniform float uRingOuter;
+      uniform sampler2D uRingMap;
+      uniform bool uHasRingMap;
+    `;
+    const RING_FRAGMENT = /* glsl */ `
+      {
+        vec3 ringSun = normalize( -vOrbitimWorld );
+        float ringDenom = dot( ringSun, uRingNormal );
+        if ( abs( ringDenom ) > 1e-4 ) {
+          float ringT = dot( uRingCenter - vOrbitimWorld, uRingNormal ) / ringDenom;
+          if ( ringT > 0.0 ) {
+            float ringR = length( vOrbitimWorld + ringSun * ringT - uRingCenter );
+            if ( ringR > uRingInner && ringR < uRingOuter ) {
+              float ringStrip = ( ringR - uRingInner ) / ( uRingOuter - uRingInner );
+              float ringAlpha = uHasRingMap ? texture2D( uRingMap, vec2( ringStrip, 0.5 ) ).a : 0.5;
+              diffuseColor.rgb *= 1.0 - ringAlpha * ${RING_SHADOW_STRENGTH.toFixed(2)};
+            }
+          }
+        }
+      }
+    `;
+
     return {
       surface: {
         onBeforeCompile: (shader) => {
@@ -329,20 +395,23 @@ export function useBodyShading(
               'void main() {',
               `${FRAGMENT_DECLARATIONS}\n${drifts ? DRIFT_DECLARATIONS : ''}\n${
                 hasAerial ? AERIAL_DECLARATIONS : ''
-              }\n${hasCloudShadow ? CLOUD_DECLARATIONS : ''}\nvoid main() {`
+              }\n${hasCloudShadow ? CLOUD_DECLARATIONS : ''}\n${
+                hasRingShadow ? RING_DECLARATIONS : ''
+              }\nvoid main() {`
             )
             .replace('#include <map_fragment>', drifts ? DRIFT_MAP_FRAGMENT : '#include <map_fragment>')
             // Eclipse shadows scale the albedo rather than the light itself:
             // the Sun is the one light in the scene and the ambient term is a
             // twentieth of it, so the difference is below the noise floor and
             // this hooks into stock three without rewriting its light loop.
-            // Cloud shadows fall on the raw ground next; the aerial haze then
-            // hazes that shadowed albedo toward the sky colour rather than the
-            // raw one.
+            // The ring shadow bands the planet, cloud shadows fall on the raw
+            // ground, then the aerial haze washes the shadowed albedo toward the
+            // sky colour rather than the raw one.
             .replace(
               '#include <color_fragment>',
               `#include <color_fragment>
                diffuseColor.rgb *= mix( ${UMBRA_FLOOR.toFixed(2)}, 1.0, orbitimSunlight() );
+               ${hasRingShadow ? RING_FRAGMENT : ''}
                ${hasCloudShadow ? CLOUD_FRAGMENT : ''}
                ${hasAerial ? AERIAL_FRAGMENT : ''}`
             )
@@ -361,7 +430,7 @@ export function useBodyShading(
         customProgramCacheKey: () =>
           `orbitim-surface${drifts ? '-drift' : ''}${hasAerial ? '-aerial' : ''}${
             hasCloudShadow ? '-cloudshadow' : ''
-          }`
+          }${hasRingShadow ? '-ringshadow' : ''}`
       },
 
       clouds: {
@@ -382,5 +451,5 @@ export function useBodyShading(
         customProgramCacheKey: () => 'orbitim-clouds'
       }
     };
-  }, [uniforms, drifts, hasAerial, hasCloudShadow]);
+  }, [uniforms, drifts, hasAerial, hasCloudShadow, hasRingShadow]);
 }
