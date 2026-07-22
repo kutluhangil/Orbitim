@@ -1,4 +1,4 @@
-import { Moon, Orbit, Sun } from 'lucide-react';
+import { Moon, Orbit, Sun, Waypoints } from 'lucide-react';
 import { useViewSettings } from '../scene/viewSettings';
 import { ShareLink } from './ShareLink';
 
@@ -12,6 +12,8 @@ import { ShareLink } from './ShareLink';
 export function ViewControls() {
   const orbitsVisible = useViewSettings((s) => s.orbitsVisible);
   const toggleOrbits = useViewSettings((s) => s.toggleOrbits);
+  const figuresVisible = useViewSettings((s) => s.figuresVisible);
+  const toggleFigures = useViewSettings((s) => s.toggleFigures);
   const theme = useViewSettings((s) => s.theme);
   const toggleTheme = useViewSettings((s) => s.toggleTheme);
 
@@ -33,6 +35,21 @@ export function ViewControls() {
         }`}
       >
         <Orbit className="h-4 w-4" />
+      </button>
+
+      <button
+        type="button"
+        onClick={toggleFigures}
+        aria-pressed={figuresVisible}
+        title={figuresVisible ? 'Hide constellations' : 'Show constellations'}
+        aria-label={figuresVisible ? 'Hide constellations' : 'Show constellations'}
+        className={`${iconButton} ${
+          figuresVisible
+            ? 'border-sky-300/40 text-sky-100'
+            : 'border-white/10 text-white/45 hover:border-white/25 hover:text-white/80'
+        }`}
+      >
+        <Waypoints className="h-4 w-4" />
       </button>
 
       <button

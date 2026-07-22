@@ -5,6 +5,8 @@ import { InfoPanel } from './ui/InfoPanel';
 import { TimeControls } from './ui/TimeControls';
 import { Landing } from './ui/Landing';
 import { ViewControls } from './ui/ViewControls';
+import { BodyModal } from './ui/BodyModal';
+import { useBodyModal } from './ui/bodyModalState';
 import { useFlight } from './flight/useFlight';
 import { SatellitePanel } from './ui/SatellitePanel';
 import { SatelliteInfo } from './ui/SatelliteInfo';
@@ -70,13 +72,31 @@ function App() {
     return () => unsubscribe.forEach((off) => off());
   }, [entered]);
 
+  // Arriving at a body raises its dossier as a hero card, once — on the
+  // transition into orbit, not every frame while there. Leaving a body drops any
+  // card with it, so it never lingers over a world no longer in frame.
+  useEffect(() => {
+    if (!entered) return;
+    return useFlight.subscribe((s, p) => {
+      const modal = useBodyModal.getState();
+      if (s.phase === 'orbiting' && p.phase !== 'orbiting' && s.target) modal.open(s.target);
+      else if (s.phase !== 'orbiting' && p.phase === 'orbiting') modal.close();
+    });
+  }, [entered]);
+
   // Escape is the way back out of a body, so a visitor who has flown somewhere
   // is never dependent on finding the rail again. It unwinds one step at a time:
-  // a selected satellite is let go of before the planet is.
+  // an open dossier is closed first, then a selected satellite is let go of
+  // before the planet is.
   useEffect(() => {
     if (!entered) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+
+      if (useBodyModal.getState().bodyId) {
+        useBodyModal.getState().close();
+        return;
+      }
 
       const selection = useSatelliteSelection.getState();
       if (selection.selected) {
@@ -106,6 +126,7 @@ function App() {
           <SatellitePanel />
           <ViewControls />
           <TimeControls />
+          <BodyModal />
         </>
       ) : (
         <Landing onEnter={() => setEntered(true)} />

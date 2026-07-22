@@ -1,6 +1,7 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import { getBodyRecord, type BodyId } from '../lib/ephemeris/bodies';
 import { getAxialTilt, getSpinAngle } from '../lib/ephemeris/rotation';
 import { useBodyTexture } from '../lib/textures/useBodyTexture';
@@ -30,6 +31,11 @@ export function Body({ id, registry, onSelect }: BodyProps) {
   const group = useRef<THREE.Group>(null);
   const surface = useRef<THREE.Mesh>(null);
   const clouds = useRef<THREE.Mesh>(null);
+
+  // A pointer crossing a body flushes its name in for a couple of seconds. The
+  // reveal removes itself when its own animation ends, so this is a single burst
+  // per hover rather than a label that has to be dismissed.
+  const [revealed, setRevealed] = useState(false);
 
   const phase = useFlight((s) => s.phase);
   const target = useFlight((s) => s.target);
@@ -67,6 +73,14 @@ export function Body({ id, registry, onSelect }: BodyProps) {
           event.stopPropagation();
           onSelect(id);
         }}
+        onPointerOver={(event) => {
+          event.stopPropagation();
+          if (!revealed) setRevealed(true);
+          document.body.style.cursor = 'pointer';
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = '';
+        }}
       >
         <sphereGeometry args={[radius, SEGMENTS[lod], SEGMENTS[lod] / 2]} />
         {isStar ? (
@@ -99,6 +113,20 @@ export function Body({ id, registry, onSelect }: BodyProps) {
           <SurfaceSites sites={sites} radius={radius} />
         )}
       </mesh>
+
+      {revealed && (
+        <Html center zIndexRange={[15, 5]} style={{ pointerEvents: 'none' }}>
+          {/* Chrome pill, dark in both themes so the burst reads over a bright
+              planet as clearly as over space. Lifted above the anchor so the
+              name sits off the body rather than across its centre. */}
+          <div
+            onAnimationEnd={() => setRevealed(false)}
+            className="body-name-reveal -translate-y-10 whitespace-nowrap rounded-full border border-sky-300/30 bg-black/60 px-3.5 py-1.5 text-[13px] font-light uppercase tracking-[0.28em] text-white shadow-lg shadow-black/40 backdrop-blur-md"
+          >
+            {record.name}
+          </div>
+        </Html>
+      )}
 
       {textures.cloudMap && (
         <mesh ref={clouds}>

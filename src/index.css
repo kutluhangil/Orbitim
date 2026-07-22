@@ -144,13 +144,74 @@ canvas {
   animation: scan-drift 5s linear infinite alternate;
 }
 
+/* A body's name flushed in when the pointer crosses it, held, then let go — a
+   self-contained burst that removes itself when the animation ends. */
+@keyframes body-name-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.94);
+    filter: blur(4px);
+  }
+  14% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  74% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+    filter: blur(3px);
+  }
+}
+
+.body-name-reveal {
+  animation: body-name-reveal 2600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* The arrival dossier rising into place over its dimmed backdrop. */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes modal-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-in {
+  animation: modal-in 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.modal-scrim-in {
+  animation: modal-scrim-in 400ms ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rise,
   .sweep::after,
   .orbit-spin,
   .hud-corner,
   .value-flash,
-  .scan-drift {
+  .scan-drift,
+  .body-name-reveal,
+  .modal-in,
+  .modal-scrim-in {
     animation: none;
   }
 }

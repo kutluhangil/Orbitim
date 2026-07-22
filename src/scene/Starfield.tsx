@@ -5,6 +5,7 @@ import { STARFIELD_TEXTURE } from '../lib/textures/registry';
 import { graphicsTier } from '../lib/device';
 import { BRIGHT_STARS, CONSTELLATIONS, NORTH_GALACTIC_POLE } from '../data/constellations';
 import type { MaterialPatch } from './surfaceShading';
+import { useViewSettings } from './viewSettings';
 
 /** Radius of the sky shell, just inside the camera's far plane. */
 const SKY_RADIUS = 40000;
@@ -298,6 +299,7 @@ export function Starfield() {
   const sprite = useMemo(createStarSprite, []);
   const uniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
   const patch = useMemo(() => twinklePatch(uniforms), [uniforms]);
+  const figuresVisible = useViewSettings((s) => s.figuresVisible);
 
   useEffect(() => {
     let cancelled = false;
@@ -326,14 +328,16 @@ export function Starfield() {
         </mesh>
       )}
 
-      <lineSegments>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[figures, 3]} />
-        </bufferGeometry>
-        {/* Barely there. A figure that competes with its own stars stops being a
-            constellation and becomes a diagram. */}
-        <lineBasicMaterial color="#8fb4ff" transparent opacity={0.11} depthWrite={false} toneMapped={false} />
-      </lineSegments>
+      {figuresVisible && (
+        <lineSegments>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[figures, 3]} />
+          </bufferGeometry>
+          {/* Barely there. A figure that competes with its own stars stops being a
+              constellation and becomes a diagram. */}
+          <lineBasicMaterial color="#8fb4ff" transparent opacity={0.11} depthWrite={false} toneMapped={false} />
+        </lineSegments>
+      )}
 
       <StarLayer buffers={stars} sprite={sprite} patch={patch} size={220} opacity={0.9} />
       <StarLayer buffers={brightStars} sprite={sprite} patch={patch} size={340} opacity={1} />

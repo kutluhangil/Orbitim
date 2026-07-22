@@ -42,7 +42,7 @@ export function BodyRail() {
             }`}
           >
             <span className="h-px w-5 bg-current opacity-60 md:w-6" aria-hidden />
-            <span className="text-[11px] font-medium uppercase tracking-[0.2em] md:tracking-[0.22em]">System</span>
+            <span className="text-[11px] font-medium uppercase tracking-[0.2em] md:tracking-[0.22em]">Solar System</span>
           </button>
         </li>
 
