@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { getBodyRecord, getMoonsOf, type BodyId } from '../lib/ephemeris/bodies';
 import { J2000_MS } from '../lib/ephemeris/rotation';
+import { getTextureSet } from '../lib/textures/registry';
 import { sceneRadiusOf, type PositionRegistry } from './bodyPositions';
 import { useSimTime } from './useSimTime';
 
@@ -164,6 +165,17 @@ const UMBRA_FLOOR = 0.06;
  */
 const AERIAL_STRENGTH = 0.55;
 
+/** How dark a fragment gets under the thickest cloud directly up-sun of it. */
+const CLOUD_SHADOW_STRENGTH = 0.6;
+
+/**
+ * Bound to the cloud-shadow sampler before the cloud map has loaded — a single
+ * black texel reads as no cloud, so the surface stays unshadowed rather than
+ * sampling a stale or undefined texture.
+ */
+const NO_CLOUD = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+NO_CLOUD.needsUpdate = true;
+
 export interface MaterialPatch {
   onBeforeCompile: (shader: THREE.WebGLProgramParametersWithUniforms) => void;
   customProgramCacheKey: () => string;
@@ -201,12 +213,17 @@ export interface BodyShading {
 export function useBodyShading(
   id: BodyId,
   registry: PositionRegistry,
-  atmosphereColor?: string | null
+  atmosphereColor?: string | null,
+  cloudShadowMap?: THREE.Texture | null
 ): BodyShading {
   const casters = useMemo(() => occludersOf(id), [id]);
   const casterRadii = useMemo(() => casters.map(sceneRadiusOf), [casters]);
   const drifts = ZONAL_DRIFT[id] !== undefined;
   const hasAerial = !!atmosphereColor;
+  // Compiled in for any body the registry gives a cloud shell, whether or not
+  // its map has loaded yet — the sampler binds the black fallback until it does,
+  // so the program never has to recompile when the texture arrives.
+  const hasCloudShadow = !!getTextureSet(id)?.cloudMap;
 
   const uniforms = useMemo(
     () => ({
@@ -215,10 +232,18 @@ export function useBodyShading(
       uSunRadius: { value: sceneRadiusOf('sun') },
       uDriftHours: { value: 0 },
       uZonalRate: { value: ZONAL_DRIFT[id] ?? 0 },
-      uAerialColor: { value: new THREE.Color(atmosphereColor ?? '#000000') }
+      uAerialColor: { value: new THREE.Color(atmosphereColor ?? '#000000') },
+      uCloudShadow: { value: NO_CLOUD as THREE.Texture },
+      // Cloud shell altitude in scene units: the horizontal throw of a shadow is
+      // this times the tangent of the sun's zenith angle.
+      uCloudReach: { value: sceneRadiusOf(id) * 0.006 }
     }),
     [id, casters, atmosphereColor]
   );
+
+  // The cloud map is shared with the shell and only resident at the near level,
+  // so the sampler follows it in and out rather than being fixed at compile.
+  uniforms.uCloudShadow.value = cloudShadowMap ?? NO_CLOUD;
 
   useFrame(() => {
     for (let i = 0; i < casters.length; i++) {
@@ -251,6 +276,50 @@ export function useBodyShading(
       );
     `;
 
+    // Cloud shadows. The cloud shell floats above the surface, so the cloud that
+    // shadows a point is the one up-sun of it — sampled by stepping the map's UV
+    // toward the Sun. The step is built without a tangent basis on the mesh: the
+    // screen-space derivatives of the world position and the map UV give the
+    // world-to-UV mapping at this pixel, and the sun-ward world tangent is
+    // resolved through it. The throw lengthens as the Sun sinks, which is why the
+    // shadows only read near the terminator, as they do from orbit.
+    const CLOUD_DECLARATIONS = /* glsl */ `
+      uniform sampler2D uCloudShadow;
+      uniform float uCloudReach;
+    `;
+    const CLOUD_FRAGMENT = /* glsl */ `
+      #ifdef USE_MAP
+      {
+        vec3 cloudN = normalize( vOrbitimNormal );
+        vec3 cloudSun = normalize( -vOrbitimWorld );
+        float cloudElev = dot( cloudSun, cloudN );
+        if ( cloudElev > 0.02 ) {
+          vec3 cloudTangent = normalize( cloudSun - cloudElev * cloudN );
+          vec3 dpx = dFdx( vOrbitimWorld );
+          vec3 dpy = dFdy( vOrbitimWorld );
+          vec2 duvx = dFdx( vMapUv );
+          vec2 duvy = dFdy( vMapUv );
+          float a11 = dot( dpx, dpx );
+          float a12 = dot( dpx, dpy );
+          float a22 = dot( dpy, dpy );
+          float det = a11 * a22 - a12 * a12;
+          if ( abs( det ) > 1e-12 ) {
+            float bx = dot( dpx, cloudTangent );
+            float by = dot( dpy, cloudTangent );
+            float ca = ( a22 * bx - a12 * by ) / det;
+            float cb = ( a11 * by - a12 * bx ) / det;
+            vec2 cloudStep = ca * duvx + cb * duvy;
+            // altitude * tan(zenith): the horizontal distance the shadow is cast.
+            float throwDist = uCloudReach * sqrt( 1.0 - cloudElev * cloudElev ) / max( cloudElev, 0.15 );
+            float cloud = texture2D( uCloudShadow, vMapUv + cloudStep * throwDist ).r;
+            float cloudDay = smoothstep( 0.02, 0.32, cloudElev );
+            diffuseColor.rgb *= 1.0 - cloud * ${CLOUD_SHADOW_STRENGTH.toFixed(2)} * cloudDay;
+          }
+        }
+      }
+      #endif
+    `;
+
     return {
       surface: {
         onBeforeCompile: (shader) => {
@@ -260,19 +329,21 @@ export function useBodyShading(
               'void main() {',
               `${FRAGMENT_DECLARATIONS}\n${drifts ? DRIFT_DECLARATIONS : ''}\n${
                 hasAerial ? AERIAL_DECLARATIONS : ''
-              }\nvoid main() {`
+              }\n${hasCloudShadow ? CLOUD_DECLARATIONS : ''}\nvoid main() {`
             )
             .replace('#include <map_fragment>', drifts ? DRIFT_MAP_FRAGMENT : '#include <map_fragment>')
             // Eclipse shadows scale the albedo rather than the light itself:
             // the Sun is the one light in the scene and the ambient term is a
             // twentieth of it, so the difference is below the noise floor and
             // this hooks into stock three without rewriting its light loop.
-            // The aerial haze follows, hazing the shadowed albedo toward the sky
-            // colour rather than the raw one.
+            // Cloud shadows fall on the raw ground next; the aerial haze then
+            // hazes that shadowed albedo toward the sky colour rather than the
+            // raw one.
             .replace(
               '#include <color_fragment>',
               `#include <color_fragment>
                diffuseColor.rgb *= mix( ${UMBRA_FLOOR.toFixed(2)}, 1.0, orbitimSunlight() );
+               ${hasCloudShadow ? CLOUD_FRAGMENT : ''}
                ${hasAerial ? AERIAL_FRAGMENT : ''}`
             )
             // City lights belong to the night side. Left unmasked they burn
@@ -288,7 +359,9 @@ export function useBodyShading(
            patched and an unpatched material with otherwise identical settings
            would share one program. The key keeps the variants apart. */
         customProgramCacheKey: () =>
-          `orbitim-surface${drifts ? '-drift' : ''}${hasAerial ? '-aerial' : ''}`
+          `orbitim-surface${drifts ? '-drift' : ''}${hasAerial ? '-aerial' : ''}${
+            hasCloudShadow ? '-cloudshadow' : ''
+          }`
       },
 
       clouds: {
@@ -309,5 +382,5 @@ export function useBodyShading(
         customProgramCacheKey: () => 'orbitim-clouds'
       }
     };
-  }, [uniforms, drifts, hasAerial]);
+  }, [uniforms, drifts, hasAerial, hasCloudShadow]);
 }

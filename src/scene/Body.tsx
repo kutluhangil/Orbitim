@@ -41,7 +41,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
   const target = useFlight((s) => s.target);
   const lod = lodFor(id, phase, target);
   const textures = useBodyTexture(id, lod);
-  const shading = useBodyShading(id, registry, ATMOSPHERES[id]?.color ?? null);
+  const shading = useBodyShading(id, registry, ATMOSPHERES[id]?.color ?? null, textures.cloudMap);
   const relief = useMoonRelief(id);
   const surfaceMaterial = useMemo(
     () => (relief ? mergePatches([shading.surface, relief]) : shading.surface),
