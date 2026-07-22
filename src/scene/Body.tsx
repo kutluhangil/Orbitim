@@ -41,7 +41,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
   const target = useFlight((s) => s.target);
   const lod = lodFor(id, phase, target);
   const textures = useBodyTexture(id, lod);
-  const shading = useBodyShading(id, registry);
+  const shading = useBodyShading(id, registry, ATMOSPHERES[id]?.color ?? null);
   const relief = useMoonRelief(id);
   const surfaceMaterial = useMemo(
     () => (relief ? mergePatches([shading.surface, relief]) : shading.surface),
@@ -87,7 +87,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
           <SunSurface map={textures.map} />
         ) : (
           <meshStandardMaterial
-            key={`${textures.map?.uuid ?? 'flat'}-${textures.emissiveMap?.uuid ?? 'none'}`}
+            key={`${textures.map?.uuid ?? 'flat'}-${textures.emissiveMap?.uuid ?? 'none'}-${textures.roughnessMap?.uuid ?? 'rough'}`}
             map={textures.map ?? undefined}
             /* The registry colour is the fallback for a body with neither a
                published map nor a generated surface; anything that supplies its
@@ -99,7 +99,11 @@ export function Body({ id, registry, onSelect }: BodyProps) {
                carry their real brightness instead of the dim average that kept
                them from washing out the daylit hemisphere. */
             emissiveIntensity={textures.emissiveMap ? 1.25 : 0}
-            roughness={0.92}
+            /* Where a roughness map is supplied it carries the absolute value —
+               low over ocean for the sun-glint, matte over land — so the scalar
+               passes it through untouched. Everything else keeps the flat matte. */
+            roughnessMap={textures.roughnessMap ?? undefined}
+            roughness={textures.roughnessMap ? 1 : 0.92}
             metalness={0}
             onBeforeCompile={surfaceMaterial.onBeforeCompile}
             customProgramCacheKey={surfaceMaterial.customProgramCacheKey}

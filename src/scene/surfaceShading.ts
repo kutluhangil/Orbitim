@@ -156,6 +156,14 @@ const DRIFT_MAP_FRAGMENT = /* glsl */ `
  */
 const UMBRA_FLOOR = 0.06;
 
+/**
+ * How far the surface is hazed toward its own atmosphere colour at the limb,
+ * where the line of sight grazes the most air. Aerial perspective: the ground
+ * near the horizon is seen through kilometres of lit atmosphere and washes out
+ * into it. Confined to the daylit side, since it is scattered sunlight.
+ */
+const AERIAL_STRENGTH = 0.55;
+
 export interface MaterialPatch {
   onBeforeCompile: (shader: THREE.WebGLProgramParametersWithUniforms) => void;
   customProgramCacheKey: () => string;
@@ -185,11 +193,20 @@ export interface BodyShading {
  * Builds the material patches for one body and keeps their uniforms current.
  * Owns its own frame callback, so a caller only has to hand the patches to the
  * materials.
+ *
+ * A body with an atmosphere hazes its own surface toward the given colour at the
+ * limb (aerial perspective); bodies without one pass `null` and keep a hard
+ * edge.
  */
-export function useBodyShading(id: BodyId, registry: PositionRegistry): BodyShading {
+export function useBodyShading(
+  id: BodyId,
+  registry: PositionRegistry,
+  atmosphereColor?: string | null
+): BodyShading {
   const casters = useMemo(() => occludersOf(id), [id]);
   const casterRadii = useMemo(() => casters.map(sceneRadiusOf), [casters]);
   const drifts = ZONAL_DRIFT[id] !== undefined;
+  const hasAerial = !!atmosphereColor;
 
   const uniforms = useMemo(
     () => ({
@@ -197,9 +214,10 @@ export function useBodyShading(id: BodyId, registry: PositionRegistry): BodyShad
       uOccluderCount: { value: casters.length },
       uSunRadius: { value: sceneRadiusOf('sun') },
       uDriftHours: { value: 0 },
-      uZonalRate: { value: ZONAL_DRIFT[id] ?? 0 }
+      uZonalRate: { value: ZONAL_DRIFT[id] ?? 0 },
+      uAerialColor: { value: new THREE.Color(atmosphereColor ?? '#000000') }
     }),
-    [id, casters]
+    [id, casters, atmosphereColor]
   );
 
   useFrame(() => {
@@ -218,6 +236,21 @@ export function useBodyShading(id: BodyId, registry: PositionRegistry): BodyShad
         .replace('#include <begin_vertex>', `#include <begin_vertex>\n${VERTEX_ASSIGN}`);
     };
 
+    // Aerial perspective: a grazing line of sight near the limb crosses far more
+    // lit air than one looking straight down, so the ground there fades into the
+    // atmosphere's own colour. `cameraPosition` is a built-in three uniform.
+    const AERIAL_DECLARATIONS = /* glsl */ `uniform vec3 uAerialColor;`;
+    const AERIAL_FRAGMENT = /* glsl */ `
+      vec3 orbitimView = normalize( cameraPosition - vOrbitimWorld );
+      float orbitimRim = 1.0 - abs( dot( orbitimView, normalize( vOrbitimNormal ) ) );
+      float orbitimLit = smoothstep( -0.05, 0.35, orbitimDaylight() );
+      diffuseColor.rgb = mix(
+        diffuseColor.rgb,
+        uAerialColor,
+        clamp( pow( orbitimRim, 3.2 ) * orbitimLit * ${AERIAL_STRENGTH.toFixed(2)}, 0.0, 1.0 )
+      );
+    `;
+
     return {
       surface: {
         onBeforeCompile: (shader) => {
@@ -225,17 +258,22 @@ export function useBodyShading(id: BodyId, registry: PositionRegistry): BodyShad
           shader.fragmentShader = shader.fragmentShader
             .replace(
               'void main() {',
-              `${FRAGMENT_DECLARATIONS}\n${drifts ? DRIFT_DECLARATIONS : ''}\nvoid main() {`
+              `${FRAGMENT_DECLARATIONS}\n${drifts ? DRIFT_DECLARATIONS : ''}\n${
+                hasAerial ? AERIAL_DECLARATIONS : ''
+              }\nvoid main() {`
             )
             .replace('#include <map_fragment>', drifts ? DRIFT_MAP_FRAGMENT : '#include <map_fragment>')
             // Eclipse shadows scale the albedo rather than the light itself:
             // the Sun is the one light in the scene and the ambient term is a
             // twentieth of it, so the difference is below the noise floor and
             // this hooks into stock three without rewriting its light loop.
+            // The aerial haze follows, hazing the shadowed albedo toward the sky
+            // colour rather than the raw one.
             .replace(
               '#include <color_fragment>',
               `#include <color_fragment>
-               diffuseColor.rgb *= mix( ${UMBRA_FLOOR.toFixed(2)}, 1.0, orbitimSunlight() );`
+               diffuseColor.rgb *= mix( ${UMBRA_FLOOR.toFixed(2)}, 1.0, orbitimSunlight() );
+               ${hasAerial ? AERIAL_FRAGMENT : ''}`
             )
             // City lights belong to the night side. Left unmasked they burn
             // through the daylit hemisphere, which is the single most common
@@ -249,7 +287,8 @@ export function useBodyShading(id: BodyId, registry: PositionRegistry): BodyShad
         /* three caches compiled programs by material parameters alone, so a
            patched and an unpatched material with otherwise identical settings
            would share one program. The key keeps the variants apart. */
-        customProgramCacheKey: () => (drifts ? 'orbitim-surface-drift' : 'orbitim-surface')
+        customProgramCacheKey: () =>
+          `orbitim-surface${drifts ? '-drift' : ''}${hasAerial ? '-aerial' : ''}`
       },
 
       clouds: {
@@ -270,5 +309,5 @@ export function useBodyShading(id: BodyId, registry: PositionRegistry): BodyShad
         customProgramCacheKey: () => 'orbitim-clouds'
       }
     };
-  }, [uniforms, drifts]);
+  }, [uniforms, drifts, hasAerial]);
 }

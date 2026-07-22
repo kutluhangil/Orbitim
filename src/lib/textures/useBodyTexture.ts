@@ -39,19 +39,28 @@ function releaseNearTextures(set: BodyTextureSet): void {
   // small enough that keeping every one costs little.
   if (set.map.near !== set.map.far) release(set.map.near);
   if (set.emissiveMap && set.emissiveMap.near !== set.emissiveMap.far) release(set.emissiveMap.near);
+  release(set.roughnessMap);
   release(set.cloudMap);
 }
 
 export interface BodyTextures {
   map: THREE.Texture | null;
   emissiveMap: THREE.Texture | null;
+  roughnessMap: THREE.Texture | null;
   cloudMap: THREE.Texture | null;
   ringMap: THREE.Texture | null;
   /** Highest level of detail currently resident. */
   resolvedLod: Lod | null;
 }
 
-const EMPTY: BodyTextures = { map: null, emissiveMap: null, cloudMap: null, ringMap: null, resolvedLod: null };
+const EMPTY: BodyTextures = {
+  map: null,
+  emissiveMap: null,
+  roughnessMap: null,
+  cloudMap: null,
+  ringMap: null,
+  resolvedLod: null
+};
 
 /**
  * Loads a body's textures at the requested level of detail. The far level is
@@ -79,12 +88,19 @@ export function useBodyTexture(id: BodyId, requestedLod: Lod): BodyTextures {
           ? load(set.emissiveMap[level], THREE.SRGBColorSpace)
           : Promise.resolve(null),
         set.cloudMap && level === 'near' ? load(set.cloudMap, THREE.SRGBColorSpace) : Promise.resolve(null),
-        set.ringMap ? load(set.ringMap, THREE.SRGBColorSpace) : Promise.resolve(null)
-      ]).then(([map, emissiveMap, cloudMap, ringMap]) => {
+        set.ringMap ? load(set.ringMap, THREE.SRGBColorSpace) : Promise.resolve(null),
+        // A roughness mask is data, not colour, so it loads in linear space. Held
+        // to the near level like the cloud shell — the glint is only legible from
+        // close, and phones stay on the far maps.
+        set.roughnessMap && level === 'near'
+          ? load(set.roughnessMap, THREE.NoColorSpace)
+          : Promise.resolve(null)
+      ]).then(([map, emissiveMap, cloudMap, ringMap, roughnessMap]) => {
         if (cancelled) return;
         setTextures((prev) => ({
           map,
           emissiveMap,
+          roughnessMap: roughnessMap ?? prev.roughnessMap,
           cloudMap: cloudMap ?? prev.cloudMap,
           ringMap,
           resolvedLod: level
