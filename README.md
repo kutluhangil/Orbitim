@@ -21,13 +21,20 @@ bodies — the Sun, eight planets and nine major moons — are placed by orbital
 rather than by hand, for the exact instant on the clock. Fly to any of them, scrub the
 clock forward a decade, and the geometry you see is the geometry the sky will hold.
 
-Around Earth, up to fourteen constellations of tracked objects are propagated from real
+Beyond the planets, the system is filled in with the objects that actually share it: five
+comets riding their real orbits with a tail that only unfurls near the Sun, the named
+dwarf planets and the largest asteroids, and the main belt between Mars and Jupiter with
+its Kirkwood gaps.
+
+Around Earth, up to seventeen constellations of tracked objects are propagated from real
 orbital elements at frame rate: space stations, Starlink, GPS, GLONASS, Galileo, BeiDou,
 OneWeb, Iridium NEXT, geostationary, weather, science, Earth observation, the brightest
-objects and Iridium 33 debris.
+objects, and the four great orbital-debris clouds — Iridium 33, Cosmos 2251, Fengyun 1C
+and Cosmos 1408.
 
 **No backend. No API keys. No accounts.** Static files, a fetch for orbital elements, and
-your GPU.
+your GPU. Any view is a link: the Share button copies the exact instant, rate and
+constellations so someone else opens on the same sky.
 
 > **Nothing on screen is simulated telemetry.** Where a value is undefined for a body,
 > the panel says so instead of inventing one.
@@ -39,8 +46,10 @@ your GPU.
 | Feature | Description |
 |---------|-------------|
 | 🪐 **Real positions** | VSOP87 and the lunar theory via `astronomy-engine`; moons of Jupiter, Saturn, Mars and Neptune from parent-relative elements |
-| 🛰️ **Live satellites** | CelesTrak element sets, SGP4-propagated in the browser each frame, 14 switchable groups with live object counts |
+| 🛰️ **Live satellites** | CelesTrak element sets, SGP4-propagated in the browser each frame, 17 switchable groups with live object counts, including four real debris clouds |
+| ☄️ **Comets & minor planets** | Halley, Encke, 67P, Hale–Bopp and NEOWISE on their JPL orbits; the named dwarf planets and largest asteroids on theirs |
 | 🕰️ **Scrubbable clock** | Pause, run at rate, or jump to any instant — every position, distance and phase angle follows |
+| 🔗 **Shareable moments** | The Share button copies a link to the exact instant, rate and constellations on screen |
 | 🚀 **Cinematic flight** | Camera state machine: overview → flying → orbiting, with `Escape` as the way back out |
 | 🏷️ **Collision-free labels** | Screen-space planet labels laid out in one pass, so the inner planets never stack into an unreadable pile |
 | ☀️ **Living photosphere** | The Sun's surface is a GLSL shader: drifting granulation over the published map, plus a camera-facing corona sprite |
@@ -59,7 +68,8 @@ your GPU.
 |-------|--------|
 | Planet, moon and Sun positions | VSOP87 and the lunar theory, via [`astronomy-engine`](https://github.com/cosinekitty/astronomy) |
 | Distances, light travel time, apparent magnitude, illuminated fraction | Computed from the same ephemeris at render time |
-| Satellite positions | CelesTrak TLEs, SGP4-propagated in the browser each frame |
+| Satellite and debris positions | CelesTrak TLEs, SGP4-propagated in the browser each frame |
+| Comet, dwarf-planet and asteroid orbits | JPL Small-Body Database osculating elements, two-body propagated (checked against astronomy-engine's Pluto) |
 | Body constants (mass, gravity, day length, atmosphere) | [NASA Planetary Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/) |
 | Surface imagery | [Solar System Scope](https://www.solarsystemscope.com/textures/), CC BY 4.0, NASA-derived — see `public/textures/ATTRIBUTION.md` |
 
