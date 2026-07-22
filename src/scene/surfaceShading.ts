@@ -404,10 +404,15 @@ export function useBodyShading(
     // give the basis; the height is one luminance read, so no extra samples are
     // needed. Runs where three has just set the geometric `normal`.
     const ALBEDO_RELIEF_FRAGMENT = /* glsl */ `
+      #ifdef USE_MAP
       {
-        float arHeight = dot( diffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) ) * ${ALBEDO_RELIEF_STRENGTH.toFixed(
-          2
-        )};
+        // The height is read from a coarse mip of the map, not the full-detail
+        // texel: a per-pixel read turns the map's own grain and JPEG blocks into
+        // a field of false normals, whereas the blurred level carries only the
+        // real landforms — basins, crater clusters, the big volcanoes — so the
+        // relief deepens those without boiling the ground.
+        float arHeight = dot( texture2D( map, vMapUv, 3.5 ).rgb, vec3( 0.299, 0.587, 0.114 ) )
+          * ${ALBEDO_RELIEF_STRENGTH.toFixed(2)};
         vec3 arPos = - vViewPosition;
         vec3 arDpx = dFdx( arPos );
         vec3 arDpy = dFdy( arPos );
@@ -419,6 +424,7 @@ export function useBodyShading(
           normal = normalize( normal - arGrad );
         }
       }
+      #endif
     `;
 
     return {
@@ -457,6 +463,12 @@ export function useBodyShading(
               '#include <emissivemap_fragment>',
               `#include <emissivemap_fragment>
                totalEmissiveRadiance *= smoothstep( 0.12, -0.22, orbitimDaylight() );`
+            )
+            // Relief is read straight after three sets the geometric normal, so
+            // the perturbed normal carries through the whole light loop.
+            .replace(
+              '#include <normal_fragment_begin>',
+              `#include <normal_fragment_begin>\n${hasAlbedoRelief ? ALBEDO_RELIEF_FRAGMENT : ''}`
             );
         },
         /* three caches compiled programs by material parameters alone, so a
@@ -465,7 +477,7 @@ export function useBodyShading(
         customProgramCacheKey: () =>
           `orbitim-surface${drifts ? '-drift' : ''}${hasAerial ? '-aerial' : ''}${
             hasCloudShadow ? '-cloudshadow' : ''
-          }${hasRingShadow ? '-ringshadow' : ''}`
+          }${hasRingShadow ? '-ringshadow' : ''}${hasAlbedoRelief ? '-relief' : ''}`
       },
 
       clouds: {
@@ -486,5 +498,5 @@ export function useBodyShading(
         customProgramCacheKey: () => 'orbitim-clouds'
       }
     };
-  }, [uniforms, drifts, hasAerial, hasCloudShadow, hasRingShadow]);
+  }, [uniforms, drifts, hasAerial, hasCloudShadow, hasRingShadow, hasAlbedoRelief]);
 }
