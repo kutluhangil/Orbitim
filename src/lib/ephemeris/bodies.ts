@@ -23,6 +23,8 @@ export interface BodyRecord {
   parent?: BodyId;
   /** equatorial radius, km */
   radiusKm: number;
+  /** Full long, intermediate and short axes in km for an appreciably irregular body. */
+  shapeAxesKm?: readonly [number, number, number];
   /** obliquity of the rotation axis to its orbital plane, degrees */
   axialTiltDeg: number;
   /** sidereal rotation period, hours. Negative means retrograde. */
@@ -72,8 +74,10 @@ const RECORDS: BodyRecord[] = [
   { id: 'ganymede', name: 'Ganymede', kind: 'moon', engineBody: null, parent: 'jupiter', radiusKm: 2634.1, axialTiltDeg: 0, rotationHours: 171.7, orbitRadiusKm: 1070400, orbitDays: 7.155, orbitInclinationDeg: 0.2, color: '#a89f92' },
   { id: 'callisto', name: 'Callisto', kind: 'moon', engineBody: null, parent: 'jupiter', radiusKm: 2410.3, axialTiltDeg: 0, rotationHours: 400.5, orbitRadiusKm: 1882700, orbitDays: 16.689, orbitInclinationDeg: 0.19, color: '#7a6f63' },
   { id: 'titan', name: 'Titan', kind: 'moon', engineBody: null, parent: 'saturn', radiusKm: 2574.7, axialTiltDeg: 0, rotationHours: 382.7, orbitRadiusKm: 1221870, orbitDays: 15.945, orbitInclinationDeg: 0.33, color: '#e0a95c' },
-  { id: 'phobos', name: 'Phobos', kind: 'moon', engineBody: null, parent: 'mars', radiusKm: 11.27, axialTiltDeg: 0, rotationHours: 7.65, orbitRadiusKm: 9376, orbitDays: 0.3189, orbitInclinationDeg: 1.08, color: '#8a7f74' },
-  { id: 'deimos', name: 'Deimos', kind: 'moon', engineBody: null, parent: 'mars', radiusKm: 6.2, axialTiltDeg: 0, rotationHours: 30.31, orbitRadiusKm: 23463, orbitDays: 1.2624, orbitInclinationDeg: 1.79, color: '#9a8f84' },
+  // NASA's measured full axes make the Martian moons visibly lumpy; a sphere
+  // would overstate both their symmetry and their apparent eclipse silhouettes.
+  { id: 'phobos', name: 'Phobos', kind: 'moon', engineBody: null, parent: 'mars', radiusKm: 11.27, shapeAxesKm: [27, 22, 18], axialTiltDeg: 0, rotationHours: 7.65, orbitRadiusKm: 9376, orbitDays: 0.3189, orbitInclinationDeg: 1.08, color: '#8a7f74' },
+  { id: 'deimos', name: 'Deimos', kind: 'moon', engineBody: null, parent: 'mars', radiusKm: 6.2, shapeAxesKm: [15, 12, 11], axialTiltDeg: 0, rotationHours: 30.31, orbitRadiusKm: 23463, orbitDays: 1.2624, orbitInclinationDeg: 1.79, color: '#9a8f84' },
   { id: 'triton', name: 'Triton', kind: 'moon', engineBody: null, parent: 'neptune', radiusKm: 1353.4, axialTiltDeg: 0, rotationHours: -141.0, orbitRadiusKm: 354759, orbitDays: -5.877, orbitInclinationDeg: 156.9, color: '#c9d6d6' },
   { id: 'charon', name: 'Charon', kind: 'moon', engineBody: null, parent: 'pluto', radiusKm: 606, axialTiltDeg: 0, rotationHours: -153.2928, orbitRadiusKm: 19596, orbitDays: 6.3872, orbitInclinationDeg: 0.08, color: '#b7afa4' },
 

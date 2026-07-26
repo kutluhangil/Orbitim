@@ -14,6 +14,7 @@ import { Rings } from './Rings';
 import { SunGlow } from './SunGlow';
 import { SunSurface } from './SunSurface';
 import { SolarProminences } from './SolarProminences';
+import { EnceladusPlume } from './EnceladusPlume';
 import { Atmosphere, ATMOSPHERES } from './Atmosphere';
 import { SurfaceSites } from './SurfaceSites';
 import { getExploration } from '../data/missions';
@@ -75,6 +76,16 @@ export function Body({ id, registry, onSelect }: BodyProps) {
   );
 
   const radius = sceneRadiusOf(id);
+  // Most bodies are close enough to spherical at this scale. The Martian moons
+  // are not: preserve their measured long/intermediate/short axis ratios rather
+  // than making their transit and limb geometry deceptively round.
+  const shapeScale = record.shapeAxesKm
+    ? ([
+        record.shapeAxesKm[0] / (2 * record.radiusKm),
+        record.shapeAxesKm[1] / (2 * record.radiusKm),
+        record.shapeAxesKm[2] / (2 * record.radiusKm)
+      ] as const)
+    : undefined;
   const isStar = record.kind === 'star';
   const atmosphere = ATMOSPHERES[id];
   const worldPosition = registry.get(id)!;
@@ -103,6 +114,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
     <group ref={group}>
       <mesh
         ref={surface}
+        scale={shapeScale}
         onClick={(event) => {
           event.stopPropagation();
           onSelect(id);
@@ -145,6 +157,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
         )}
 
         {isStar && <SolarProminences radius={radius} />}
+        {id === 'enceladus' && <EnceladusPlume radius={radius} />}
 
         {/* Children of the surface, so the sites turn with the ground they are
             on. Only drawn for the body the camera has arrived at: from the
