@@ -49,6 +49,13 @@ export const TEXTURES: Partial<Record<BodyId, BodyTextureSet>> = {
   uranus: { map: { far: `${T}/2k_uranus.jpg`, near: `${T}/2k_uranus.jpg` } },
   neptune: { map: { far: `${T}/2k_neptune.jpg`, near: `${T}/2k_neptune.jpg` } },
   moon: { map: { far: `${T}/2k_moon.jpg`, near: `${T}/8k_moon.jpg` } },
+  // NASA 3D Resources equirectangular maps, built from Galileo/Voyager imaging.
+  // These are the published global mosaics; partial-coverage products are not
+  // used as if they were complete worlds. See public/textures/ATTRIBUTION.md.
+  io: { map: { far: `${T}/nasa_io.jpg`, near: `${T}/nasa_io.jpg` } },
+  europa: { map: { far: `${T}/nasa_europa.jpg`, near: `${T}/nasa_europa.jpg` } },
+  ganymede: { map: { far: `${T}/nasa_ganymede.jpg`, near: `${T}/nasa_ganymede.jpg` } },
+  callisto: { map: { far: `${T}/nasa_callisto.jpg`, near: `${T}/nasa_callisto.jpg` } },
   // Real global mosaics: New Horizons for Pluto and Charon, Dawn for Ceres. The
   // published globes are monochrome — a full-globe colour equirectangular of
   // Pluto's far side does not exist — so these carry the true grey rather than

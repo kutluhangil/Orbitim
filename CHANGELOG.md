@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added NASA/USGS global Galileo and Voyager surface mosaics for Io, Europa, Ganymede and Callisto; excluded partial-coverage maps from being presented as complete globes.
 - Added NASA DONKI active-region solar prominences, luminous live-TLE satellite points, and an explicitly independent Earth cloud layer.
 - Linked the Sun’s convection and corona response to the latest observed NASA DONKI flare, CME and geomagnetic reports.
 - Added live NASA DONKI solar-weather telemetry with explicit unavailable-state reporting, and removed ended/non-NASA Mars missions from the NASA mission list.
