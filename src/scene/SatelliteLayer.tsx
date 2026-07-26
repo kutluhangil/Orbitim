@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { propagate } from 'satellite.js';
@@ -28,35 +28,35 @@ const PROPAGATION_SLICES = graphicsTier === 'low' ? 8 : 4;
  */
 const PICK_FRACTION = isTouchPrimary ? 0.016 : 0.007;
 
-/** Loaded glyph textures, shared across every group that names the same class. */
-const glyphCache = new Map<string, THREE.Texture>();
+const SATELLITE_VERTEX_DECLARATIONS = /* glsl */ `
+  attribute float aPhase;
+  uniform float uTime;
+  varying float vPulse;
+`;
 
-/**
- * Loads the white silhouette for a hardware class once and returns it when
- * ready. Until then the caller draws bare points, so a missing or slow sprite
- * degrades to the old square rather than blanking the constellation.
- */
-function useGlyphTexture(glyph: string): THREE.Texture | null {
-  const [texture, setTexture] = useState<THREE.Texture | null>(() => glyphCache.get(glyph) ?? null);
+const SATELLITE_POINT_SIZE = /* glsl */ `
+  vPulse = 0.72 + sin( uTime * ( 1.4 + aPhase * 0.9 ) + aPhase * 6.2831853 ) * 0.28;
+  gl_PointSize = size * vPulse;
+`;
 
-  useEffect(() => {
-    const cached = glyphCache.get(glyph);
-    if (cached) {
-      setTexture(cached);
-      return;
-    }
-    let live = true;
-    new THREE.TextureLoader().load(`/sprites/sat-${glyph}.webp`, (loaded) => {
-      loaded.colorSpace = THREE.SRGBColorSpace;
-      glyphCache.set(glyph, loaded);
-      if (live) setTexture(loaded);
-    });
-    return () => {
-      live = false;
-    };
-  }, [glyph]);
+const SATELLITE_POINT_COLOR = /* glsl */ `
+  #include <color_fragment>
+  diffuseColor.rgb *= 0.7 + vPulse * 0.6;
+`;
 
-  return texture;
+function satelliteGlowPatch(uniforms: { uTime: { value: number } }) {
+  return {
+    onBeforeCompile: (shader: THREE.WebGLProgramParametersWithUniforms) => {
+      Object.assign(shader.uniforms, uniforms);
+      shader.vertexShader = shader.vertexShader
+        .replace('void main() {', `${SATELLITE_VERTEX_DECLARATIONS}\nvoid main() {`)
+        .replace('gl_PointSize = size;', SATELLITE_POINT_SIZE);
+      shader.fragmentShader = shader.fragmentShader
+        .replace('void main() {', 'varying float vPulse;\nvoid main() {')
+        .replace('#include <color_fragment>', SATELLITE_POINT_COLOR);
+    },
+    customProgramCacheKey: () => 'orbitim-satellite-points'
+  };
 }
 
 interface SatelliteLayerProps {
@@ -124,7 +124,6 @@ export function SatelliteLayer({ registry }: SatelliteLayerProps) {
  */
 function SatelliteGroupPoints({ groupId }: { groupId: string }) {
   const definition = getSatelliteGroup(groupId);
-  const glyph = useGlyphTexture(definition.glyph);
   const load = useSatelliteGroups((s) => s.load);
   const satellites = useSatelliteGroups((s) => s.sets[groupId]) as SatelliteData[] | undefined;
   const points = useRef<THREE.Points>(null);
@@ -136,7 +135,13 @@ function SatelliteGroupPoints({ groupId }: { groupId: string }) {
 
   const count = satellites?.length ?? 0;
   const positions = useMemo(() => new Float32Array(Math.max(count, 1) * 3), [count]);
+  const phases = useMemo(
+    () => Float32Array.from({ length: Math.max(count, 1) }, (_, index) => (Math.sin(index * 19.31 + 0.7) + 1) / 2),
+    [count]
+  );
   const cursor = useRef(0);
+  const glowUniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
+  const glowPatch = useMemo(() => satelliteGlowPatch(glowUniforms), [glowUniforms]);
 
   // Points are raycast against the geometry's bounding sphere first, and the
   // position buffer is written straight into the GPU attribute without three
@@ -153,8 +158,9 @@ function SatelliteGroupPoints({ groupId }: { groupId: string }) {
     geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), apogeeKm * KM_TO_SCENE);
   }, [satellites]);
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     if (!satellites || satellites.length === 0 || !points.current) return;
+    glowUniforms.uTime.value = clock.elapsedTime;
 
     const date = useSimTime.getState().date;
     const attribute = points.current.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -203,18 +209,21 @@ function SatelliteGroupPoints({ groupId }: { groupId: string }) {
     <points ref={points} onClick={onPick}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-aPhase" args={[phases, 1]} />
       </bufferGeometry>
       <pointsMaterial
         color={definition.color}
-        map={glyph ?? undefined}
-        // A silhouette needs more screen than a bare dot to read; the soft
-        // alpha tail is cut so overlapping sprites never fight over depth.
-        alphaTest={glyph ? 0.25 : 0}
-        size={glyph ? 0.02 : 0.014}
+        // The distant trackables are photons in a telescope, not spacecraft
+        // icons: each real TLE becomes one small, colour-coded luminous point.
+        size={0.018}
         sizeAttenuation
         transparent
-        opacity={0.95}
+        opacity={0.9}
         depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        toneMapped={false}
+        onBeforeCompile={glowPatch.onBeforeCompile}
+        customProgramCacheKey={glowPatch.customProgramCacheKey}
       />
     </points>
   );

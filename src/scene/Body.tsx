@@ -13,6 +13,7 @@ import { useMoonRelief } from './moonRelief';
 import { Rings } from './Rings';
 import { SunGlow } from './SunGlow';
 import { SunSurface } from './SunSurface';
+import { SolarProminences } from './SolarProminences';
 import { Atmosphere, ATMOSPHERES } from './Atmosphere';
 import { SurfaceSites } from './SurfaceSites';
 import { getExploration } from '../data/missions';
@@ -92,6 +93,9 @@ export function Body({ id, registry, onSelect }: BodyProps) {
     const spin = getSpinAngle(id, date);
     if (surface.current) surface.current.rotation.y = spin;
     // Clouds drift slightly faster than the surface, as they do in reality.
+    // The cloud field is independent of the crust: it completes an extra
+    // rotation over roughly 12.5 Earth days, a restrained visible proxy for
+    // continuously advecting weather systems rather than a locked shell.
     if (clouds.current) clouds.current.rotation.y = spin * 1.08;
   });
 
@@ -139,6 +143,8 @@ export function Body({ id, registry, onSelect }: BodyProps) {
             customProgramCacheKey={surfaceMaterial.customProgramCacheKey}
           />
         )}
+
+        {isStar && <SolarProminences radius={radius} />}
 
         {/* Children of the surface, so the sites turn with the ground they are
             on. Only drawn for the body the camera has arrived at: from the

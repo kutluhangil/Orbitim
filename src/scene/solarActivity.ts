@@ -5,6 +5,8 @@ interface SolarActivityState {
   /** 0 is the quiet baseline; 1 is a bounded, high observed-activity response. */
   level: number;
   updatedAt: Date | null;
+  /** Latest NOAA active-region notation, for the Sun's visible prominence. */
+  sourceLocation: string | null;
   setSnapshot: (snapshot: SpaceWeatherSnapshot | null) => void;
 }
 
@@ -42,5 +44,11 @@ export function solarActivityLevel(snapshot: SpaceWeatherSnapshot | null): numbe
 export const useSolarActivity = create<SolarActivityState>((set) => ({
   level: 0,
   updatedAt: null,
-  setSnapshot: (snapshot) => set({ level: solarActivityLevel(snapshot), updatedAt: snapshot?.fetchedAt ?? null })
+  sourceLocation: null,
+  setSnapshot: (snapshot) =>
+    set({
+      level: solarActivityLevel(snapshot),
+      updatedAt: snapshot?.fetchedAt ?? null,
+      sourceLocation: snapshot?.latestFlare?.sourceLocation ?? null
+    })
 }));
