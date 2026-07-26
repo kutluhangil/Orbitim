@@ -83,6 +83,25 @@ const PROFILES: Partial<Record<BodyId, ReliefProfile>> = {
   triton: {
     low: '#c0b0ad', high: '#f4eae6', mottle: '#d9c4bd', mottleWeight: 0.42,
     craters: 0.08, roughness: 0.35, relief: 0.45, fractures: 0.7, frequency: 5
+  },
+  // Voyager 2 saw an ancient cratered ice-rock surface, cut by long fault
+  // valleys whose sun-facing walls carry fresh, reflective frost.
+  titania: {
+    low: '#5e5a56', high: '#d8d4cf', mottle: '#8d8881', mottleWeight: 0.24,
+    craters: 0.58, roughness: 0.32, relief: 0.64, fractures: 0.76, frequency: 3
+  },
+  // Old, heavily cratered Oberon preserves bright-rayed impacts, dark crater
+  // floors and a large mountain rather than the smoother terrain of Titania.
+  oberon: {
+    low: '#403d3a', high: '#d0cbc3', mottle: '#766f68', mottleWeight: 0.34,
+    craters: 0.88, roughness: 0.5, relief: 0.9, fractures: 0.08, frequency: 4
+  },
+  // Miranda's coronae are young, sharp patches of ridges and valleys bounded
+  // against older cratered ground; the high fracture weight preserves that
+  // extraordinary contrast without pretending Voyager imaged the far side.
+  miranda: {
+    low: '#6f6f70', high: '#e2e1dc', mottle: '#a8a6a1', mottleWeight: 0.48,
+    craters: 0.24, roughness: 0.68, relief: 1.05, fractures: 0.98, frequency: 3
   }
 };
 
