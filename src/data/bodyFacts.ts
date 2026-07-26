@@ -40,7 +40,7 @@ export const BODY_FACTS: Record<BodyId, BodyFacts> = {
     yearLength: '88.0 days',
     moons: 0,
     atmosphere: 'Trace exosphere: oxygen, sodium, hydrogen',
-    activeMissions: ['BepiColombo (arriving)']
+    activeMissions: ['BepiColombo (arrival phase; orbit insertion Nov 2026)']
   },
   venus: {
     tagline: 'Runaway greenhouse, hot enough to melt lead, spinning backwards.',
@@ -51,7 +51,7 @@ export const BODY_FACTS: Record<BodyId, BodyFacts> = {
     yearLength: '224.7 days',
     moons: 0,
     atmosphere: 'Carbon dioxide 96%, nitrogen 3.5%, sulphuric acid cloud',
-    activeMissions: ['Akatsuki (contact lost 2024)']
+    activeMissions: ['None. Akatsuki operations ended in September 2025']
   },
   earth: {
     tagline: 'The only place where life is known to exist.',
@@ -82,7 +82,7 @@ export const BODY_FACTS: Record<BodyId, BodyFacts> = {
     meanTemp: '−110 °C',
     dayLength: '9.93 hours',
     yearLength: '11.86 years',
-    moons: 97,
+    moons: 101,
     atmosphere: 'Hydrogen 90%, helium 10%',
     activeMissions: ['Juno', 'JUICE (cruise)', 'Europa Clipper (cruise)']
   },

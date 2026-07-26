@@ -1,9 +1,9 @@
 import { HelioVector, GeoVector, JupiterMoons, Illumination, MakeTime, Body } from 'astronomy-engine';
 import { getBodyRecord, type BodyId } from './bodies';
-import { laplaceMoonDirection } from './moonElements';
+import { laplaceMoonDirection, laplaceMoonVectorKm } from './moonElements';
 import { propagateElements } from './cometOrbit';
 
-/** Right-handed ecliptic-of-J2000 vector, astronomical units. */
+/** Right-handed J2000 mean-equator (EQJ) vector, astronomical units. */
 export interface EclipticVec {
   x: number;
   y: number;
@@ -12,7 +12,7 @@ export interface EclipticVec {
 
 export interface BodyState {
   id: BodyId;
-  /** Position relative to the solar system barycentre (Sun at origin), AU. */
+  /** Position relative to the Sun, in the EQJ frame, AU. */
   heliocentric: EclipticVec;
   /** Position relative to Earth, AU. Zero-length for Earth itself. */
   geocentric: EclipticVec;
@@ -44,10 +44,23 @@ function moonHeliocentric(id: BodyId, date: Date): EclipticVec {
   if (!record.parent) throw new Error(`Body ${id} declared as moon without a parent`);
   const parent = getHeliocentric(getBodyRecord(record.parent).id, date);
 
-  if (record.engineBody) {
-    const geo = GeoVector(record.engineBody, MakeTime(date), true);
-    const earth = HelioVector(Body.Earth, MakeTime(date));
-    return { x: earth.x + geo.x, y: earth.y + geo.y, z: earth.z + geo.z };
+  if (record.id === 'moon') {
+    const geo = GeoVector(Body.Moon, MakeTime(date), true);
+    return { x: parent.x + geo.x, y: parent.y + geo.y, z: parent.z + geo.z };
+  }
+
+  if (record.parent === 'jupiter' && (id === 'io' || id === 'europa' || id === 'ganymede' || id === 'callisto')) {
+    const moon = JupiterMoons(MakeTime(date))[id];
+    return { x: parent.x + moon.x, y: parent.y + moon.y, z: parent.z + moon.z };
+  }
+
+  const laplace = laplaceMoonVectorKm(id, date);
+  if (laplace) {
+    return {
+      x: parent.x + laplace.x / AU_KM,
+      y: parent.y + laplace.y / AU_KM,
+      z: parent.z + laplace.z / AU_KM
+    };
   }
 
   const orbitDays = record.orbitDays!;

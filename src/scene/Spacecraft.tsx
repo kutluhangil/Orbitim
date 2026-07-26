@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
 import { SPACECRAFT, spacecraftOrbit, spacecraftPosition, type Spacecraft as Craft } from '../data/spacecraft';
 import { heliocentricToScene } from '../lib/scale';
+import { useFlight } from '../flight/useFlight';
 import { useSimTime } from './useSimTime';
 import { useViewSettings } from './viewSettings';
 
@@ -53,6 +54,7 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
   const distance = useRef<HTMLSpanElement>(null);
   const orbitsVisible = useViewSettings((s) => s.orbitsVisible);
   const light = useViewSettings((s) => s.theme === 'light');
+  const phase = useFlight((s) => s.phase);
 
   const orbitPoints = useMemo(() => {
     const sample = spacecraftOrbit(craft);
@@ -85,17 +87,19 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
           <spriteMaterial map={ring} color={craft.color} transparent depthWrite={false} />
         </sprite>
 
-        <Html position={[0, 1.6, 0]} center distanceFactor={48} zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-          <div className="flex flex-col items-center leading-tight">
-            <span
-              className="whitespace-nowrap text-[9px] uppercase tracking-[0.16em]"
-              style={{ color: light ? '#475569' : craft.color }}
-            >
-              {craft.name}
-            </span>
-            <span ref={distance} className="text-[8px] tabular-nums text-white/45" />
-          </div>
-        </Html>
+        {phase === 'overview' && (
+          <Html position={[0, 1.6, 0]} center distanceFactor={48} zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
+            <div className="flex flex-col items-center leading-tight">
+              <span
+                className="whitespace-nowrap text-[9px] uppercase tracking-[0.16em]"
+                style={{ color: light ? '#475569' : craft.color }}
+              >
+                {craft.name}
+              </span>
+              <span ref={distance} className="text-[8px] tabular-nums text-white/45" />
+            </div>
+          </Html>
+        )}
       </group>
     </group>
   );

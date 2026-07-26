@@ -16,12 +16,12 @@ export const EARTH_SCENE_RADIUS = kmToSceneRadius(getBodyRecord('earth').radiusK
 export const SGP4_EARTH_RADIUS_KM = 6378.135;
 
 /**
- * Earth-centred kilometres into the axes of the satellite layer. The layer is a
- * child of a group carrying Earth's axial tilt, so the equatorial frame maps
- * straight across: the spin axis (z) becomes scene y.
+ * Earth-centred kilometres into the local axes of the satellite layer. The
+ * layer aligns its local north with Earth's IAU rotation axis in the shared
+ * EQJ frame, so the equatorial frame maps directly here: spin axis z is y.
  *
  * The same mapping serves both the inertial and the Earth-fixed frame, because a
- * rotation about the spin axis is a rotation about scene y in either. An
+ * rotation about the spin axis is a rotation about local y in either. An
  * Earth-fixed child therefore only needs its group turned by the sidereal angle
  * to land in the inertial frame the satellites are propagated in.
  */

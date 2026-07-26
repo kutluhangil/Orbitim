@@ -113,6 +113,16 @@ function eccentricAnomaly(meanAnomaly: number, e: number): number {
  * for moons without tabulated elements, so the caller can fall back.
  */
 export function laplaceMoonDirection(id: BodyId, date: Date): Vec3 | null {
+  const vector = laplaceMoonVectorKm(id, date);
+  return vector ? normalize(vector) : null;
+}
+
+/**
+ * Parent-relative position from the mean-element model, in kilometres and EQJ.
+ * The direction drives the compressed scene while the magnitude is retained for
+ * the live distance readouts, avoiding the former unrelated circular model.
+ */
+export function laplaceMoonVectorKm(id: BodyId, date: Date): Vec3 | null {
   const el = ELEMENTS[id];
   if (!el) return null;
 
@@ -148,11 +158,11 @@ export function laplaceMoonDirection(id: BodyId, date: Date): Vec3 | null {
   const nodeAxis = normalize({ x: -pole.y, y: pole.x, z: 0 });
   const yAxis = cross(pole, nodeAxis);
 
-  return normalize({
-    x: px * nodeAxis.x + py * yAxis.x + pz * pole.x,
-    y: px * nodeAxis.y + py * yAxis.y + pz * pole.y,
-    z: px * nodeAxis.z + py * yAxis.z + pz * pole.z
-  });
+  return {
+    x: el.a * (px * nodeAxis.x + py * yAxis.x + pz * pole.x),
+    y: el.a * (px * nodeAxis.y + py * yAxis.y + pz * pole.y),
+    z: el.a * (px * nodeAxis.z + py * yAxis.z + pz * pole.z)
+  };
 }
 
 /** Secular angle travelled since epoch, degrees. Prograde node/apse convention. */

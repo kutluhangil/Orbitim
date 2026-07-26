@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { getBodyRecord, type BodyId } from '../lib/ephemeris/bodies';
-import { getAxialTilt, getSpinAngle } from '../lib/ephemeris/rotation';
+import { getSpinAngle, getSpinAxis } from '../lib/ephemeris/rotation';
 import { useBodyTexture } from '../lib/textures/useBodyTexture';
 import { lodFor, useFlight } from '../flight/useFlight';
 import { useSimTime } from './useSimTime';
@@ -31,6 +31,8 @@ export function Body({ id, registry, onSelect }: BodyProps) {
   const group = useRef<THREE.Group>(null);
   const surface = useRef<THREE.Mesh>(null);
   const clouds = useRef<THREE.Mesh>(null);
+  const pole = useMemo(() => new THREE.Vector3(), []);
+  const north = useMemo(() => new THREE.Vector3(0, 1, 0), []);
 
   // A pointer crossing a body flushes its name in for a couple of seconds. The
   // reveal removes itself when its own animation ends, so this is a single burst
@@ -43,15 +45,15 @@ export function Body({ id, registry, onSelect }: BodyProps) {
   const textures = useBodyTexture(id, lod);
 
   // A ringed planet takes its own ring's shadow across it. The ring lies in the
-  // equatorial plane, so its world normal is the spin axis — the planet's axial
-  // tilt applied to straight up, fixed in world space rather than turning with
-  // the surface. Radii are carried in scene units for the shadow trace.
+  // equatorial plane, so its world normal is the IAU north-pole direction in
+  // the shared EQJ frame, mapped into scene axes. Radii are carried in scene
+  // units for the shadow trace.
   const ringShadow = useMemo(() => {
     if (!record.rings) return null;
     const scale = sceneRadiusOf(id);
-    const tilt = getAxialTilt(id);
+    const axis = getSpinAxis(id, useSimTime.getState().date);
     return {
-      normal: new THREE.Vector3(0, Math.cos(tilt), Math.sin(tilt)),
+      normal: new THREE.Vector3(axis.x, axis.z, -axis.y).normalize(),
       inner: scale * record.rings.innerRadii,
       outer: scale * record.rings.outerRadii,
       map: textures.ringMap
@@ -82,6 +84,11 @@ export function Body({ id, registry, onSelect }: BodyProps) {
     if (position && group.current) group.current.position.copy(position);
 
     const date = useSimTime.getState().date;
+    const axis = getSpinAxis(id, date);
+    // EQJ x/y/z becomes scene x/z/-y. Align the sphere's local north (+Y)
+    // with the physical pole before applying the prime-meridian spin below.
+    pole.set(axis.x, axis.z, -axis.y).normalize();
+    if (group.current) group.current.quaternion.setFromUnitVectors(north, pole);
     const spin = getSpinAngle(id, date);
     if (surface.current) surface.current.rotation.y = spin;
     // Clouds drift slightly faster than the surface, as they do in reality.
@@ -89,7 +96,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
   });
 
   return (
-    <group ref={group} rotation={[getAxialTilt(id), 0, 0]}>
+    <group ref={group}>
       <mesh
         ref={surface}
         onClick={(event) => {

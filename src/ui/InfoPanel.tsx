@@ -14,6 +14,11 @@ function formatKm(km: number): string {
   return `${Math.round(km).toLocaleString('en-US')} km`;
 }
 
+function formatLightTravelTime(minutes: number): string {
+  if (minutes < 1) return `${(minutes * 60).toFixed(1)} s`;
+  return `${minutes.toFixed(1)} min`;
+}
+
 const SITE_KIND_LABELS: Record<SiteKind, string> = {
   crewed: 'Crewed landing',
   landing: 'Landing',
@@ -128,7 +133,7 @@ export function InfoPanel() {
             {target !== 'earth' && (
               <>
                 <Row label="Distance from Earth" value={formatKm(auToKm(state.distanceFromEarthAU))} />
-                <Row label="Light travel time" value={`${auToLightMinutes(state.distanceFromEarthAU).toFixed(1)} min`} />
+                <Row label="Light travel time" value={formatLightTravelTime(auToLightMinutes(state.distanceFromEarthAU))} />
               </>
             )}
             <Row label="Distance from Sun" value={formatKm(auToKm(state.distanceFromSunAU))} />
@@ -146,7 +151,7 @@ export function InfoPanel() {
         <section className="mb-5">
           <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">Fact sheet</h3>
           <dl>
-            <Row label="Mean radius" value={formatKm(record.radiusKm)} />
+            <Row label="Equatorial radius" value={formatKm(record.radiusKm)} />
             <Row label="Mass" value={facts.massKg} />
             <Row label="Surface gravity" value={facts.gravity} />
             <Row label="Mean temperature" value={facts.meanTemp} />

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { propagate } from 'satellite.js';
 import type { SatelliteData } from '../services/tle';
-import { getAxialTilt } from '../lib/ephemeris/rotation';
+import { getSpinAxis } from '../lib/ephemeris/rotation';
 import { useFlight } from '../flight/useFlight';
 import { useSimTime } from './useSimTime';
 import { getSatelliteGroup, useSatelliteGroups } from './satelliteGroups';
@@ -75,6 +75,8 @@ export function SatelliteLayer({ registry }: SatelliteLayerProps) {
   const engaged = target === 'earth' && phase !== 'overview';
   const enabled = useSatelliteGroups((s) => s.enabled);
   const group = useRef<THREE.Group>(null);
+  const pole = useMemo(() => new THREE.Vector3(), []);
+  const north = useMemo(() => new THREE.Vector3(0, 1, 0), []);
   const { camera, raycaster } = useThree();
 
   // Leaving Earth takes the satellite panel and the followed object with it,
@@ -87,6 +89,11 @@ export function SatelliteLayer({ registry }: SatelliteLayerProps) {
     if (!engaged || !group.current) return;
     const earth = registry.get('earth')!;
     group.current.position.copy(earth);
+    const axis = getSpinAxis('earth', useSimTime.getState().date);
+    // SGP4 positions are equatorial. Give the satellite frame the same real
+    // Earth pole as the globe instead of the former ecliptic 23.44° tilt.
+    pole.set(axis.x, axis.z, -axis.y).normalize();
+    group.current.quaternion.setFromUnitVectors(north, pole);
 
     // Points are picked by proximity to the ray, not by any surface, so the
     // threshold is what makes a satellite tappable at all. It is set from the
@@ -100,7 +107,7 @@ export function SatelliteLayer({ registry }: SatelliteLayerProps) {
   if (!engaged) return null;
 
   return (
-    <group ref={group} rotation={[getAxialTilt('earth'), 0, 0]}>
+    <group ref={group}>
       {enabled.map((id) => (
         <SatelliteGroupPoints key={id} groupId={id} />
       ))}
