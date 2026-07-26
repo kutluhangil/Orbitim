@@ -7,6 +7,7 @@ import { OBSERVER_PRESETS, type ObserverLocation, useObserverSettings } from '..
 import { useSimTime } from '../scene/useSimTime';
 import { useViewSettings } from '../scene/viewSettings';
 import { tleHealthLabel } from '../lib/dataHealth';
+import { findNextStarlinkRises, type StarlinkRise } from '../lib/ephemeris/starlinkPasses';
 
 function formatAngle(value: number): string {
   const sign = value > 0 ? '+' : '';
@@ -39,6 +40,9 @@ export function ObserverPanel() {
   const setLocation = useObserverSettings((state) => state.setLocation);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [stationError, setStationError] = useState<string | null>(null);
+  const [starlinkState, setStarlinkState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [starlinkRises, setStarlinkRises] = useState<StarlinkRise[]>([]);
+  const [starlinkError, setStarlinkError] = useState<string | null>(null);
   const [observerTime, setObserverTime] = useState(() => {
     const date = useSimTime.getState().date;
     return new Date(Math.floor(date.getTime() / 60_000) * 60_000);
@@ -46,6 +50,8 @@ export function ObserverPanel() {
   const load = useSatelliteGroups((state) => state.load);
   const stations = useSatelliteGroups((state) => state.sets.stations);
   const stationsHealth = useSatelliteGroups((state) => state.health.stations);
+  const starlink = useSatelliteGroups((state) => state.sets.starlink);
+  const starlinkHealth = useSatelliteGroups((state) => state.health.starlink);
 
   useEffect(() => {
     void load('stations').catch((cause) => {
@@ -87,6 +93,21 @@ export function ObserverPanel() {
       (error) => setLocationError(`Location unavailable: ${error.message}`),
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 10 * 60_000 }
     );
+  };
+
+  const searchStarlink = async () => {
+    setStarlinkState('loading');
+    setStarlinkError(null);
+    try {
+      const sets = useSatelliteGroups.getState();
+      const items = sets.sets.starlink ?? await sets.load('starlink');
+      const rises = await findNextStarlinkRises(items, location, observerTime);
+      setStarlinkRises(rises);
+      setStarlinkState('ready');
+    } catch (cause) {
+      setStarlinkState('error');
+      setStarlinkError(`Starlink pass search unavailable: ${cause instanceof Error ? cause.message : String(cause)}`);
+    }
   };
 
   return (
@@ -155,6 +176,38 @@ export function ObserverPanel() {
         )}
         <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>TLE prediction sampled at one-minute cadence; 10° minimum altitude; times are UTC.</p>
         {stationsHealth && <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>{tleHealthLabel(stationsHealth)}</p>}
+      </div>
+
+      <div className={`mt-4 border-t pt-4 ${light ? 'border-slate-200' : 'border-white/8'}`}>
+        <div className="flex items-center justify-between gap-2">
+          <span className={`text-[10px] uppercase tracking-[0.2em] ${muted}`}>Starlink rises</span>
+          <button
+            type="button"
+            onClick={() => void searchStarlink()}
+            disabled={starlinkState === 'loading'}
+            className={`rounded-md border px-2 py-1 text-[9px] uppercase tracking-[0.16em] transition-colors disabled:cursor-wait ${light ? 'border-slate-300 text-sky-700' : 'border-sky-300/25 text-sky-200/80'}`}
+          >
+            {starlinkState === 'loading' ? 'Scanning…' : starlink ? 'Refresh' : 'Find'}
+          </button>
+        </div>
+        {starlinkState === 'idle' && <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>Runs on demand in a worker; only rises above 10° are listed.</p>}
+        {starlinkError && <p className="mt-2 text-[10px] leading-relaxed text-red-300/90">{starlinkError}</p>}
+        {starlinkState === 'ready' && (
+          <>
+            {starlinkRises.length > 0 ? (
+              <ul className="mt-2 space-y-1.5">
+                {starlinkRises.map((rise) => (
+                  <li key={`${rise.noradId}-${rise.rise.getTime()}`} className="flex items-baseline justify-between gap-2 text-[10px]">
+                    <span className="truncate text-white/70">{rise.name}</span>
+                    <span className={`shrink-0 tabular-nums ${light ? 'text-sky-700' : 'text-sky-100/85'}`}>{formatTime(rise.rise)} · {formatAngle(rise.altitudeAtSample)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>No Starlink rises above 10° in the next 12 hours.</p>}
+            <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>These are geometric rises, not an optical-brightness forecast.</p>
+            {starlinkHealth && <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>{tleHealthLabel(starlinkHealth)}</p>}
+          </>
+        )}
       </div>
     </aside>
   );

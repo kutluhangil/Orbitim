@@ -3,6 +3,8 @@ import * as satellite from 'satellite.js';
 export interface SatelliteData {
   satrec: satellite.SatRec;
   name: string;
+  tleLine1: string;
+  tleLine2: string;
   /** Element-set epoch derived from the TLE itself, not fetch time. */
   epochMs: number;
   lat?: number;
@@ -219,7 +221,7 @@ export function parseTLE(tleData: string, group?: string): SatelliteData[] {
         try {
           const satrec = satellite.twoline2satrec(tleLine1, tleLine2);
           if (satrec) {
-            satellites.push({ name, satrec, epochMs: tleEpochMs(satrec), group });
+            satellites.push({ name, satrec, tleLine1, tleLine2, epochMs: tleEpochMs(satrec), group });
           }
         } catch (cause) {
           console.warn(
