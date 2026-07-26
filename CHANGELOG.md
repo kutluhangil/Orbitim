@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added explicit TLE provenance, fetch age and element-epoch age to satellite and observer predictions.
 - Added a local-sky observer mode with topocentric Sun, Moon and planet alt/az plus an explicit-location ISS pass prediction.
 - Added Voyager-informed physically lit terrain profiles for Titania, Oberon and Miranda rather than presenting incomplete imagery as full global maps.
 - Rendered Phobos and Deimos with their measured tri-axial proportions and added a restrained animated Enceladus south-polar ice-plume layer based on Cassini observations.

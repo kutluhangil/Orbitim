@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { fetchSatellitesByGroup, type SatelliteData } from '../services/tle';
+import type { TleHealth } from '../lib/dataHealth';
 
 /** NORAD catalogue number of the International Space Station. */
 export const ISS_NORAD_ID = 25544;
@@ -62,6 +63,8 @@ interface SatelliteState {
    * layer being on screen.
    */
   sets: Record<string, SatelliteData[]>;
+  /** Provenance retained alongside each set so prediction panels never imply live data. */
+  health: Record<string, TleHealth>;
   toggle: (id: string) => void;
   load: (id: string) => Promise<SatelliteData[]>;
 }
@@ -72,6 +75,7 @@ const pending = new Map<string, Promise<SatelliteData[]>>();
 export const useSatelliteGroups = create<SatelliteState>((set, get) => ({
   enabled: SATELLITE_GROUPS.filter((g) => g.defaultOn).map((g) => g.id),
   sets: {},
+  health: {},
   toggle: (id) =>
     set((s) => ({
       enabled: s.enabled.includes(id) ? s.enabled.filter((g) => g !== id) : [...s.enabled, id]
@@ -86,7 +90,11 @@ export const useSatelliteGroups = create<SatelliteState>((set, get) => ({
     const request = fetchSatellitesByGroup(id).then(
       (result) => {
         pending.delete(id);
-        set((s) => ({ sets: { ...s.sets, [id]: result.satellites } }));
+        const { satellites, ...health } = result;
+        set((s) => ({
+          sets: { ...s.sets, [id]: satellites },
+          health: { ...s.health, [id]: health }
+        }));
         return result.satellites;
       },
       (error) => {

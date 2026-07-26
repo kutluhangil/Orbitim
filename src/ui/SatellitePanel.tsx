@@ -3,6 +3,7 @@ import { useFlight } from '../flight/useFlight';
 import { ISS_NORAD_ID, SATELLITE_GROUPS, useSatelliteGroups } from '../scene/satelliteGroups';
 import { useSatelliteSelection } from '../scene/satelliteSelection';
 import { useIsCompact } from './useMediaQuery';
+import { tleHealthLabel } from '../lib/dataHealth';
 
 /**
  * Constellation switchboard. Only meaningful while the camera is at Earth, so
@@ -19,6 +20,7 @@ export function SatellitePanel() {
   const phase = useFlight((s) => s.phase);
   const enabled = useSatelliteGroups((s) => s.enabled);
   const sets = useSatelliteGroups((s) => s.sets);
+  const health = useSatelliteGroups((s) => s.health);
   const toggle = useSatelliteGroups((s) => s.toggle);
   const compact = useIsCompact();
   // Shut until asked for, on both layouts: fourteen constellations is a taller
@@ -58,6 +60,8 @@ export function SatellitePanel() {
   if (target !== 'earth' || phase === 'overview') return null;
 
   const total = enabled.reduce((sum, id) => sum + (sets[id]?.length ?? 0), 0);
+  const activeHealth = enabled.map((id) => health[id]).filter((value) => value !== undefined);
+  const oldestActive = activeHealth.sort((a, b) => a.fetchedAt - b.fetchedAt)[0];
   const list = (
     <ul className="grid grid-cols-2 gap-x-2 px-2 pb-3 md:block md:max-h-[46vh] md:overflow-y-auto md:pb-2">
       {SATELLITE_GROUPS.map((group, index) => {
@@ -168,6 +172,10 @@ export function SatellitePanel() {
         <span>Satellites</span>
         <span className="tabular-nums text-white/35">{total.toLocaleString('en-US')}</span>
       </button>
+
+      {oldestActive && (
+        <p className="px-4 pb-2 text-[9px] leading-relaxed text-white/30">{tleHealthLabel(oldestActive)}</p>
+      )}
 
       {open && (
         <>

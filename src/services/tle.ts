@@ -3,6 +3,8 @@ import * as satellite from 'satellite.js';
 export interface SatelliteData {
   satrec: satellite.SatRec;
   name: string;
+  /** Element-set epoch derived from the TLE itself, not fetch time. */
+  epochMs: number;
   lat?: number;
   lng?: number;
   alt?: number;
@@ -13,12 +15,39 @@ export interface SatelliteData {
 export interface TleResult {
   satellites: SatelliteData[];
   source: 'live' | 'cache' | 'local_fallback' | 'hardcoded_fallback';
+  /** When this element set was fetched or written to cache. */
+  fetchedAt: number;
+  /** Oldest TLE epoch in the set; propagation quality should be judged from this. */
+  oldestEpochMs: number | null;
+  /** Freshest TLE epoch in the set. */
+  newestEpochMs: number | null;
   errorDetails?: string;
 }
 
 const CACHE_KEY_PREFIX = 'tle_cache_';
 const CACHE_TIME_KEY_PREFIX = 'tle_cache_time_';
 const TWO_HOURS = 2 * 60 * 60 * 1000;
+
+function tleEpochMs(satrec: satellite.SatRec): number {
+  return (satrec.jdsatepoch - 2440587.5) * 86400000;
+}
+
+function resultFor(
+  satellites: SatelliteData[],
+  source: TleResult['source'],
+  fetchedAt: number,
+  errorDetails?: string
+): TleResult {
+  const epochs = satellites.map((item) => item.epochMs).filter(Number.isFinite);
+  return {
+    satellites,
+    source,
+    fetchedAt,
+    oldestEpochMs: epochs.length > 0 ? Math.min(...epochs) : null,
+    newestEpochMs: epochs.length > 0 ? Math.max(...epochs) : null,
+    ...(errorDetails ? { errorDetails } : {})
+  };
+}
 
 // Embed a minimal fallback dataset (ISS + a few active satellites)
 const FALLBACK_TLE = `ISS (ZARYA)
@@ -72,10 +101,7 @@ export async function fetchSatellitesByGroup(group: string = 'starlink'): Promis
   if (cachedData && cachedTime) {
     const age = now - parseInt(cachedTime, 10);
     if (age < TWO_HOURS) {
-      return {
-        satellites: parseTLE(cachedData, group),
-        source: 'cache'
-      };
+      return resultFor(parseTLE(cachedData, group), 'cache', Number(cachedTime));
     }
   }
 
@@ -91,10 +117,7 @@ export async function fetchSatellitesByGroup(group: string = 'starlink'): Promis
       localStorage.setItem(`${CACHE_KEY_PREFIX}${group}`, data);
       localStorage.setItem(`${CACHE_TIME_KEY_PREFIX}${group}`, now.toString());
 
-      return {
-        satellites: parseTLE(data, group),
-        source: 'live'
-      };
+      return resultFor(parseTLE(data, group), 'live', now);
     }
   } catch (cdnErr) {
     console.warn(`Satvisor CDN fetch failed for group ${group}, trying live CelesTrak...`, cdnErr);
@@ -122,10 +145,7 @@ export async function fetchSatellitesByGroup(group: string = 'starlink'): Promis
     localStorage.setItem(`${CACHE_KEY_PREFIX}${group}`, data);
     localStorage.setItem(`${CACHE_TIME_KEY_PREFIX}${group}`, now.toString());
 
-    return {
-      satellites: parseTLE(data, group),
-      source: 'live'
-    };
+      return resultFor(parseTLE(data, group), 'live', now);
   } catch (error: any) {
     console.error(`Failed live CelesTrak fetch for group ${group}:`, error);
     const errorDetails = error?.message || String(error);
@@ -141,11 +161,7 @@ export async function fetchSatellitesByGroup(group: string = 'starlink'): Promis
           // Filter to keep only Starlink satellites
           const starlinks = parsed.filter(s => s.name.toUpperCase().includes('STARLINK'));
           if (starlinks.length > 0) {
-            return {
-              satellites: starlinks,
-              source: 'local_fallback',
-              errorDetails
-            };
+            return resultFor(starlinks, 'local_fallback', now, errorDetails);
           }
         }
       } catch (cdnErr) {
@@ -157,11 +173,7 @@ export async function fetchSatellitesByGroup(group: string = 'starlink'): Promis
         const localResponse = await fetch('/starlink_fallback.txt');
         if (localResponse.ok) {
           const localData = await localResponse.text();
-          return {
-            satellites: parseTLE(localData, group),
-            source: 'local_fallback',
-            errorDetails
-          };
+          return resultFor(parseTLE(localData, group), 'local_fallback', now, errorDetails);
         }
       } catch (localErr) {
         console.error("Local fallback file fetch failed:", localErr);
@@ -170,20 +182,22 @@ export async function fetchSatellitesByGroup(group: string = 'starlink'): Promis
 
     // 5. Fallback to expired cache if available
     if (cachedData) {
-      return {
-        satellites: parseTLE(cachedData, group),
-        source: 'cache',
-        errorDetails: `${errorDetails} (Using expired cache)`
-      };
+      return resultFor(
+        parseTLE(cachedData, group),
+        'cache',
+        cachedTime ? Number(cachedTime) : now,
+        `${errorDetails} (Using expired cache)`
+      );
     }
 
     // 6. Fallback to hardcoded TLE if absolutely nothing else works
     console.warn("No cache or local files available. Falling back to embedded core satellites.");
-    return {
-      satellites: parseTLE(FALLBACK_TLE, group),
-      source: 'hardcoded_fallback',
-      errorDetails: `${errorDetails} (Using core emergency set)`
-    };
+    return resultFor(
+      parseTLE(FALLBACK_TLE, group),
+      'hardcoded_fallback',
+      now,
+      `${errorDetails} (Using core emergency set)`
+    );
   }
 }
 
@@ -205,10 +219,12 @@ export function parseTLE(tleData: string, group?: string): SatelliteData[] {
         try {
           const satrec = satellite.twoline2satrec(tleLine1, tleLine2);
           if (satrec) {
-            satellites.push({ name, satrec, group });
+            satellites.push({ name, satrec, epochMs: tleEpochMs(satrec), group });
           }
-        } catch (err) {
-          // Skip invalid
+        } catch (cause) {
+          console.warn(
+            `Skipped malformed TLE entry "${name}": ${cause instanceof Error ? cause.message : String(cause)}`
+          );
         }
       }
     }

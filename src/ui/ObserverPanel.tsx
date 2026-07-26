@@ -6,6 +6,7 @@ import { ISS_NORAD_ID, useSatelliteGroups } from '../scene/satelliteGroups';
 import { OBSERVER_PRESETS, type ObserverLocation, useObserverSettings } from '../scene/observerSettings';
 import { useSimTime } from '../scene/useSimTime';
 import { useViewSettings } from '../scene/viewSettings';
+import { tleHealthLabel } from '../lib/dataHealth';
 
 function formatAngle(value: number): string {
   const sign = value > 0 ? '+' : '';
@@ -44,6 +45,7 @@ export function ObserverPanel() {
   });
   const load = useSatelliteGroups((state) => state.load);
   const stations = useSatelliteGroups((state) => state.sets.stations);
+  const stationsHealth = useSatelliteGroups((state) => state.health.stations);
 
   useEffect(() => {
     void load('stations').catch((cause) => {
@@ -152,6 +154,7 @@ export function ObserverPanel() {
           <p className={`mt-1 text-[11px] ${muted}`}>No ISS pass above the horizon in the next 24 hours.</p>
         )}
         <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>TLE prediction sampled at one-minute cadence; 10° minimum altitude; times are UTC.</p>
+        {stationsHealth && <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>{tleHealthLabel(stationsHealth)}</p>}
       </div>
     </aside>
   );
