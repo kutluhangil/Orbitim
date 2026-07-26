@@ -3,6 +3,7 @@ import { SceneRoot } from './scene/SceneRoot';
 import { BodyRail } from './ui/BodyRail';
 import { InfoPanel } from './ui/InfoPanel';
 import { EventsPanel } from './ui/EventsPanel';
+import { SpaceWeatherPanel } from './ui/SpaceWeatherPanel';
 import { LaplacePanel } from './ui/LaplacePanel';
 import { TimeControls } from './ui/TimeControls';
 import { Landing } from './ui/Landing';
@@ -106,6 +107,7 @@ function App() {
               the world it is orbiting, not alongside it. */}
           {satellite ? <SatelliteInfo /> : <InfoPanel />}
           <EventsPanel />
+          <SpaceWeatherPanel />
           <LaplacePanel />
           <SatellitePanel />
           <ViewControls />

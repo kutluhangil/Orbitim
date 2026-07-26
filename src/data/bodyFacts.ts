@@ -73,7 +73,7 @@ export const BODY_FACTS: Record<BodyId, BodyFacts> = {
     yearLength: '687 days',
     moons: 2,
     atmosphere: 'Carbon dioxide 95%, nitrogen 2.8%',
-    activeMissions: ['Perseverance', 'Curiosity', 'Mars Reconnaissance Orbiter', 'MAVEN', 'Tianwen-1']
+    activeMissions: ['Perseverance', 'Curiosity', 'Mars Reconnaissance Orbiter']
   },
   jupiter: {
     tagline: 'A gas giant with more mass than every other planet combined.',
