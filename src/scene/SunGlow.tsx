@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useSolarActivity } from './solarActivity';
 
 /**
  * Radial falloff sprite for the Sun's corona. A camera-facing gradient reads as
@@ -34,24 +35,28 @@ function createGlowTexture(): THREE.Texture {
 /** Two stacked sprites: a tight photosphere bloom and a wide corona. */
 export function SunGlow({ radius }: { radius: number }) {
   const texture = useMemo(createGlowTexture, []);
+  const activity = useSolarActivity((state) => state.level);
   const corona = useRef<THREE.Sprite>(null);
   const inner = useRef<THREE.SpriteMaterial>(null);
   const scratch = useMemo(() => new THREE.Vector3(), []);
+  const response = useRef(0);
 
   // The corona is not static: it swells and settles with activity. Two
   // incommensurate periods keep the beat from reading as a loop.
-  useFrame(({ clock, camera }) => {
+  useFrame(({ clock, camera }, delta) => {
     const t = clock.elapsedTime;
-    const pulse = 1 + Math.sin(t * 0.21) * 0.05 + Math.sin(t * 0.07 + 1.7) * 0.035;
+    response.current = THREE.MathUtils.damp(response.current, activity, 1.25, delta);
+    const pulseAmplitude = 0.025 + response.current * 0.055;
+    const pulse = 1 + Math.sin(t * 0.21) * pulseAmplitude + Math.sin(t * 0.07 + 1.7) * pulseAmplitude * 0.65;
     if (corona.current) {
       corona.current.scale.set(radius * 9 * pulse, radius * 9 * pulse, 1);
       // Close in, the corona sprite would fill the frame and wash the scene
       // out; it fades as the camera enters the region it is meant to suggest.
       const distance = camera.position.distanceTo(corona.current.getWorldPosition(scratch));
       const material = corona.current.material as THREE.SpriteMaterial;
-      material.opacity = 0.16 * THREE.MathUtils.smoothstep(distance / radius, 3.5, 9.0);
+      material.opacity = (0.16 + response.current * 0.12) * THREE.MathUtils.smoothstep(distance / radius, 3.5, 9.0);
     }
-    if (inner.current) inner.current.opacity = 0.86 + Math.sin(t * 0.33) * 0.06;
+    if (inner.current) inner.current.opacity = 0.86 + response.current * 0.09 + Math.sin(t * 0.33) * pulseAmplitude;
   });
 
   return (

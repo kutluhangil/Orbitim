@@ -2,6 +2,7 @@ import { RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useFlight } from '../flight/useFlight';
 import { fetchSpaceWeather, type SpaceWeatherSnapshot } from '../services/nasaDonki';
+import { useSolarActivity } from '../scene/solarActivity';
 import { useViewSettings } from '../scene/viewSettings';
 
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
@@ -56,11 +57,15 @@ export function SpaceWeatherPanel() {
     setError(null);
     try {
       const next = await fetchSpaceWeather(new Date(), signal);
-      if (!signal?.aborted) setSnapshot(next);
+      if (!signal?.aborted) {
+        setSnapshot(next);
+        useSolarActivity.getState().setSnapshot(next);
+      }
     } catch (cause) {
       if (signal?.aborted) return;
       setError(cause instanceof Error ? cause.message : String(cause));
       setSnapshot(null);
+      useSolarActivity.getState().setSnapshot(null);
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -130,6 +135,7 @@ export function SpaceWeatherPanel() {
       )}
 
       {snapshot && <p className={`mt-4 text-[10px] tabular-nums ${muted}`}>Updated {formatTime(snapshot.fetchedAt)}</p>}
+      {snapshot && <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>Solar visuals respond to these observed reports.</p>}
     </aside>
   );
 }
