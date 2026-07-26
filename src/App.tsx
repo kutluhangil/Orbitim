@@ -4,6 +4,7 @@ import { BodyRail } from './ui/BodyRail';
 import { InfoPanel } from './ui/InfoPanel';
 import { EventsPanel } from './ui/EventsPanel';
 import { SpaceWeatherPanel } from './ui/SpaceWeatherPanel';
+import { ObserverPanel } from './ui/ObserverPanel';
 import { LaplacePanel } from './ui/LaplacePanel';
 import { TimeControls } from './ui/TimeControls';
 import { Landing } from './ui/Landing';
@@ -108,6 +109,7 @@ function App() {
           {satellite ? <SatelliteInfo /> : <InfoPanel />}
           <EventsPanel />
           <SpaceWeatherPanel />
+          <ObserverPanel />
           <LaplacePanel />
           <SatellitePanel />
           <ViewControls />

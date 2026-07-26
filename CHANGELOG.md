@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a local-sky observer mode with topocentric Sun, Moon and planet alt/az plus an explicit-location ISS pass prediction.
 - Added Voyager-informed physically lit terrain profiles for Titania, Oberon and Miranda rather than presenting incomplete imagery as full global maps.
 - Rendered Phobos and Deimos with their measured tri-axial proportions and added a restrained animated Enceladus south-polar ice-plume layer based on Cassini observations.
 - Added NASA/USGS global Galileo and Voyager surface mosaics for Io, Europa, Ganymede and Callisto; excluded partial-coverage maps from being presented as complete globes.

@@ -30,7 +30,7 @@ export function BodyRail() {
   return (
     <nav
       aria-label="Solar system bodies"
-      className="pointer-events-auto fixed inset-x-0 top-0 z-20 border-b border-white/10 bg-gradient-to-b from-black/80 to-black/30 pt-[env(safe-area-inset-top)] backdrop-blur-md md:inset-x-auto md:left-6 md:top-1/2 md:border-0 md:bg-none md:pt-0 md:backdrop-blur-none md:-translate-y-1/2"
+      className="pointer-events-auto fixed inset-x-0 top-0 z-20 border-b border-white/10 bg-gradient-to-b from-black/80 to-black/30 pt-[env(safe-area-inset-top)] backdrop-blur-md md:inset-x-auto md:left-6 md:top-1/2 md:border-0 md:bg-none md:pt-0 md:backdrop-blur-none md:-translate-y-1/2 lg:left-[18rem]"
     >
       <ul className="flex snap-x snap-mandatory flex-row gap-1 overflow-x-auto px-3 py-1.5 [scrollbar-width:none] md:snap-none md:flex-col md:overflow-visible md:px-0 md:py-0">
         <li className="snap-start">
