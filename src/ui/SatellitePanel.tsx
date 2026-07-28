@@ -134,7 +134,7 @@ export function SatellitePanel() {
           <section
             id="satellite-sheet"
             aria-label="Satellite constellations"
-            className="pointer-events-auto fixed inset-x-0 bottom-[var(--time-bar)] z-40 max-h-[58dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-white/10 bg-black/85 backdrop-blur-xl"
+            className="pointer-events-auto fixed inset-x-0 bottom-[var(--system-dock)] z-40 max-h-[58dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-white/10 bg-black/85 backdrop-blur-xl"
           >
             <header className="sticky top-0 flex items-center justify-between border-b border-white/8 bg-black/60 px-4 py-3 backdrop-blur-xl">
               <span className="text-[10px] uppercase tracking-[0.2em] text-white/60">

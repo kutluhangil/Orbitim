@@ -100,7 +100,7 @@ export function SatelliteInfo() {
   };
 
   return (
-    <aside className="pointer-events-auto fixed inset-x-0 bottom-[var(--time-bar)] z-20 rounded-t-2xl border-t border-white/10 bg-black/75 backdrop-blur-xl md:inset-x-auto md:bottom-auto md:right-6 md:top-1/2 md:max-h-[80vh] md:w-[22rem] md:-translate-y-1/2 md:overflow-y-auto md:rounded-2xl md:border">
+    <aside className="pointer-events-auto fixed inset-x-0 bottom-[var(--system-dock)] z-20 rounded-t-2xl border-t border-white/10 bg-black/75 backdrop-blur-xl md:inset-x-auto md:bottom-auto md:right-6 md:top-1/2 md:max-h-[80vh] md:w-[22rem] md:-translate-y-1/2 md:overflow-y-auto md:rounded-2xl md:border">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}

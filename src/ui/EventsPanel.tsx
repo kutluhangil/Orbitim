@@ -103,7 +103,7 @@ export function EventsPanel() {
 
   return (
     <aside
-      className={`pointer-events-auto fixed inset-x-0 bottom-[var(--time-bar)] z-10 hidden max-h-[46dvh] overflow-y-auto rounded-t-2xl border-t px-4 pb-5 pt-4 backdrop-blur-xl [@media(min-height:560px)]:block md:inset-x-auto md:bottom-auto md:right-6 md:top-1/2 md:max-h-[80vh] md:w-[20rem] md:-translate-y-1/2 md:rounded-2xl md:border md:p-6 ${surface}`}
+      className={`pointer-events-auto fixed inset-x-0 bottom-[var(--system-dock)] z-10 hidden max-h-[46dvh] overflow-y-auto rounded-t-2xl border-t px-4 pb-5 pt-4 backdrop-blur-xl [@media(min-height:560px)]:block md:inset-x-auto md:bottom-auto md:right-6 md:top-1/2 md:max-h-[80vh] md:w-[20rem] md:-translate-y-1/2 md:rounded-2xl md:border md:p-6 ${surface}`}
     >
       <h2 className={`text-[10px] uppercase tracking-[0.28em] ${light ? 'text-sky-600/80' : 'text-sky-300/70'}`}>
         The sky right now

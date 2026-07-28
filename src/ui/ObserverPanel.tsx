@@ -231,7 +231,7 @@ export function ObserverPanel() {
           <section
             id="observer-sheet"
             aria-label="Observer sky"
-            className={`pointer-events-auto fixed inset-x-0 bottom-[var(--time-bar)] z-40 max-h-[70dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t p-5 backdrop-blur-xl ${surface}`}
+            className={`pointer-events-auto fixed inset-x-0 bottom-[var(--system-dock)] z-40 max-h-[70dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t p-5 backdrop-blur-xl ${surface}`}
           >
             <div className="mb-3 flex justify-end">
               <button
@@ -252,7 +252,7 @@ export function ObserverPanel() {
   return (
     <aside
       aria-label="Observer sky"
-      className={`pointer-events-auto fixed left-44 top-6 z-10 hidden w-64 rounded-2xl border p-5 backdrop-blur-xl lg:block ${surface}`}
+      className={`pointer-events-auto fixed left-6 top-6 z-10 hidden w-64 rounded-2xl border p-5 backdrop-blur-xl lg:block ${surface}`}
     >
       {panelContent}
     </aside>

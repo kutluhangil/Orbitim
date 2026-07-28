@@ -39,6 +39,7 @@ canvas {
  */
 :root {
   --time-bar: calc(6.25rem + env(safe-area-inset-bottom));
+  --system-dock: calc(var(--time-bar) + 4.625rem);
 }
 
 /* A phone on its side has height to spare nowhere: the clock drops to one row. */
@@ -51,6 +52,7 @@ canvas {
 @media (min-width: 768px) {
   :root {
     --time-bar: 0px;
+    --system-dock: 0px;
   }
 }
 
