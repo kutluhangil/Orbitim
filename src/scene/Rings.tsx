@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { BodyRecord } from '../lib/ephemeris/bodies';
+import { J2000_MS } from '../lib/ephemeris/rotation';
+import { useSimTime } from './useSimTime';
 
 interface RingsProps {
   record: BodyRecord;
@@ -48,7 +50,7 @@ const FRAGMENT = /* glsl */ `
   uniform float uOuter;
   uniform float uPlanetRadius;
   uniform vec3 uSunDirection;
-  uniform float uTime;
+  uniform float uSimDays;
 
   varying vec3 vLocalPosition;
   varying vec3 vViewPosition;
@@ -70,7 +72,15 @@ const FRAGMENT = /* glsl */ `
     // structure that is detail up close and nothing but aliasing at distance.
     float resolved = 1.0 - smoothstep(0.0, 1.0, fwidth(r) * 420.0);
     float ringlets = mix(1.0, hash(floor(r * 900.0)) * 0.35 + 0.65, resolved);
-    float wave = mix(1.0, 0.94 + 0.06 * sin(r * 260.0 - uTime * 0.35), resolved);
+    // Ring particles orbit differentially rather than as a solid record. A
+    // Keplerian period grows with radius; sparse azimuthal density structure
+    // therefore shears around the planet, with inner ringlets moving faster.
+    float radiusRatio = max(r / uPlanetRadius, 1.0);
+    float orbitDays = 0.24 * pow(radiusRatio, 1.5);
+    float orbitPhase = uSimDays * 6.28318530718 / orbitDays;
+    float azimuth = atan(vLocalPosition.y, vLocalPosition.x);
+    float densityWave = 0.965 + 0.035 * sin(azimuth * 7.0 + orbitPhase + r * 18.0);
+    float wave = mix(1.0, densityWave, resolved);
     opacity *= ringlets * wave;
 
     // How obliquely this pixel's sight line crosses the layer. Signed, because
@@ -148,16 +158,17 @@ export function Rings({ record, radius, map, worldPosition }: RingsProps) {
       uOuter: { value: outer },
       uPlanetRadius: { value: radius },
       uSunDirection: { value: new THREE.Vector3(1, 0, 0) },
-      uTime: { value: 0 }
+      uSimDays: { value: 0 }
     }),
     [map, record.color, inner, outer, radius]
   );
 
   const mesh = useRef<THREE.Mesh>(null);
 
-  useFrame((_, delta) => {
+  useFrame(() => {
     if (!material.current || !mesh.current) return;
-    material.current.uniforms.uTime.value += delta;
+    material.current.uniforms.uSimDays.value =
+      (useSimTime.getState().date.getTime() - J2000_MS) / 86_400_000;
     // The Sun is at the world origin; carry the direction to it into the ring's
     // own frame, which is tilted with the planet.
     mesh.current.getWorldQuaternion(rotation).invert();

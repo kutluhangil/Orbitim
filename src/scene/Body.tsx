@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { getBodyRecord, type BodyId } from '../lib/ephemeris/bodies';
-import { getSpinAngle, getSpinAxis } from '../lib/ephemeris/rotation';
+import { getEarthCloudAngle, getSpinAngle, getSpinAxis } from '../lib/ephemeris/rotation';
 import { useBodyTexture } from '../lib/textures/useBodyTexture';
 import { lodFor, useFlight } from '../flight/useFlight';
 import { useSimTime } from './useSimTime';
@@ -27,6 +27,22 @@ interface BodyProps {
 
 /** Segment count scales with level of detail so far bodies stay cheap. */
 const SEGMENTS = { far: 48, near: 192 } as const;
+
+/**
+ * Specular response by surface class. Regolith stays almost fully diffuse,
+ * while deep cloud decks retain the broad, soft highlight seen in spacecraft
+ * imagery. Earth supplies its own ocean/land roughness map.
+ */
+const SURFACE_ROUGHNESS: Partial<Record<BodyId, number>> = {
+  mercury: 0.98,
+  venus: 0.84,
+  mars: 0.96,
+  moon: 0.98,
+  jupiter: 0.82,
+  saturn: 0.84,
+  uranus: 0.8,
+  neptune: 0.78
+};
 
 export function Body({ id, registry, onSelect }: BodyProps) {
   const record = getBodyRecord(id);
@@ -103,11 +119,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
     if (group.current) group.current.quaternion.setFromUnitVectors(north, pole);
     const spin = getSpinAngle(id, date);
     if (surface.current) surface.current.rotation.y = spin;
-    // Clouds drift slightly faster than the surface, as they do in reality.
-    // The cloud field is independent of the crust: it completes an extra
-    // rotation over roughly 12.5 Earth days, a restrained visible proxy for
-    // continuously advecting weather systems rather than a locked shell.
-    if (clouds.current) clouds.current.rotation.y = spin * 1.08;
+    if (clouds.current) clouds.current.rotation.y = getEarthCloudAngle(date);
   });
 
   return (
@@ -149,7 +161,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
                low over ocean for the sun-glint, matte over land — so the scalar
                passes it through untouched. Everything else keeps the flat matte. */
             roughnessMap={textures.roughnessMap ?? undefined}
-            roughness={textures.roughnessMap ? 1 : 0.92}
+            roughness={textures.roughnessMap ? 1 : (SURFACE_ROUGHNESS[id] ?? 0.92)}
             metalness={0}
             onBeforeCompile={surfaceMaterial.onBeforeCompile}
             customProgramCacheKey={surfaceMaterial.customProgramCacheKey}

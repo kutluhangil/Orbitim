@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Realigned the desktop body rail, added simulation-driven Earth cloud advection and differential ring motion, and rebalanced the Sun into a bright structured photosphere with a warmer corona.
 - Moved NASA DONKI requests behind a cached Vercel route so a private server key is never exposed and quota failures are explicit.
 - Added event visits and an explicitly data-mapped Web Audio sonification for the astronomical calendar.
 - Added a compact mobile observer sheet for local sky, ISS and on-demand Starlink predictions.

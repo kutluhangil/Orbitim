@@ -252,7 +252,7 @@ export function ObserverPanel() {
   return (
     <aside
       aria-label="Observer sky"
-      className={`pointer-events-auto fixed left-6 top-6 z-10 hidden w-64 rounded-2xl border p-5 backdrop-blur-xl lg:block ${surface}`}
+      className={`pointer-events-auto fixed left-44 top-6 z-10 hidden w-64 rounded-2xl border p-5 backdrop-blur-xl lg:block ${surface}`}
     >
       {panelContent}
     </aside>

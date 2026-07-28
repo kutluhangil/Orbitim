@@ -18,10 +18,10 @@ function createGlowTexture(): THREE.Texture {
   if (!context) throw new Error('2D canvas context unavailable for the Sun glow texture');
 
   const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  gradient.addColorStop(0, 'rgba(255,244,214,1)');
-  gradient.addColorStop(0.16, 'rgba(255,206,120,0.55)');
-  gradient.addColorStop(0.34, 'rgba(255,150,54,0.13)');
-  gradient.addColorStop(0.6, 'rgba(255,120,40,0.02)');
+  gradient.addColorStop(0, 'rgba(255,232,178,1)');
+  gradient.addColorStop(0.16, 'rgba(255,196,94,0.62)');
+  gradient.addColorStop(0.34, 'rgba(255,145,44,0.16)');
+  gradient.addColorStop(0.6, 'rgba(255,116,35,0.025)');
   gradient.addColorStop(1, 'rgba(255,110,30,0)');
 
   context.fillStyle = gradient;
@@ -56,7 +56,7 @@ export function SunGlow({ radius }: { radius: number }) {
       const material = corona.current.material as THREE.SpriteMaterial;
       material.opacity = (0.16 + response.current * 0.12) * THREE.MathUtils.smoothstep(distance / radius, 3.5, 9.0);
     }
-    if (inner.current) inner.current.opacity = 0.86 + response.current * 0.09 + Math.sin(t * 0.33) * pulseAmplitude;
+    if (inner.current) inner.current.opacity = 0.9 + response.current * 0.08 + Math.sin(t * 0.33) * pulseAmplitude;
   });
 
   return (
