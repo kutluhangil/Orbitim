@@ -1,9 +1,9 @@
-import type { EclipticVec } from '../lib/ephemeris/positions';
+import type { EquatorialVec } from '../lib/ephemeris/positions';
 
 export interface HorizonsState {
   target: string;
   at: Date;
-  position: EclipticVec;
+  position: EquatorialVec;
   source: string;
 }
 

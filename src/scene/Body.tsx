@@ -8,7 +8,12 @@ import { useBodyTexture } from '../lib/textures/useBodyTexture';
 import { lodFor, useFlight } from '../flight/useFlight';
 import { useSimTime } from './useSimTime';
 import { sceneRadiusOf, type PositionRegistry } from './bodyPositions';
-import { mergePatches, useBodyShading } from './surfaceShading';
+import {
+  EARTH_CLOUD_BASE_ALTITUDE_RATIO,
+  EARTH_CLOUD_RELIEF_RATIO,
+  mergePatches,
+  useBodyShading
+} from './surfaceShading';
 import { useMoonRelief } from './moonRelief';
 import { Rings } from './Rings';
 import { SunGlow } from './SunGlow';
@@ -195,17 +200,30 @@ export function Body({ id, registry, onSelect }: BodyProps) {
       )}
 
       {textures.cloudMap && (
-        <mesh ref={clouds}>
-          <sphereGeometry args={[radius * 1.006, SEGMENTS[lod], SEGMENTS[lod] / 2]} />
-          {/* The published cloud map is white cloud on a black sky. Added on
-              top of the surface, black contributes nothing and the clouds sit
-              over the terrain without an alpha channel to rely on. */}
-          <meshBasicMaterial
+        <mesh ref={clouds} scale={shapeScale}>
+          <sphereGeometry
+            args={[
+              radius * (1 + EARTH_CLOUD_BASE_ALTITUDE_RATIO),
+              SEGMENTS[lod],
+              SEGMENTS[lod] / 2
+            ]}
+          />
+          {/* The grayscale plate drives both transparency and elevation. Clear
+              pixels are discarded; dense systems rise furthest from the base
+              shell and catch the stock physical light before the custom
+              terminator/eclipsing pass is applied. */}
+          <meshStandardMaterial
             key={textures.cloudMap.uuid}
             map={textures.cloudMap}
-            blending={THREE.AdditiveBlending}
+            alphaMap={textures.cloudMap}
+            alphaTest={0.025}
             transparent
-            opacity={0.5}
+            opacity={0.9}
+            color="#f7fbff"
+            roughness={1}
+            metalness={0}
+            displacementMap={textures.cloudMap}
+            displacementScale={radius * EARTH_CLOUD_RELIEF_RATIO}
             depthWrite={false}
             onBeforeCompile={shading.clouds.onBeforeCompile}
             customProgramCacheKey={shading.clouds.customProgramCacheKey}

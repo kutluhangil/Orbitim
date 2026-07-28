@@ -1,4 +1,4 @@
-import type { EclipticVec } from './positions';
+import type { EquatorialVec } from './positions';
 
 /**
  * Two-body Kepler propagation for small bodies given by their osculating
@@ -103,7 +103,7 @@ function eccentricAnomaly(meanAnomaly: number, e: number): number {
  * Perifocal-plane coordinates into the J2000 mean-equator frame the scene's
  * planet positions already live in, so a comet shares one frame with them.
  */
-function perifocalToEquatorial(xOrb: number, yOrb: number, el: OrbitalElements): EclipticVec {
+function perifocalToEquatorial(xOrb: number, yOrb: number, el: OrbitalElements): EquatorialVec {
   const i = el.inclinationDeg * DEG;
   const node = el.ascendingNodeDeg * DEG;
   const argp = el.argPerihelionDeg * DEG;
@@ -135,7 +135,7 @@ function perifocalToEquatorial(xOrb: number, yOrb: number, el: OrbitalElements):
  * Heliocentric position for an instant, in the J2000 mean-equator frame
  * (matching astronomy-engine's HelioVector), astronomical units.
  */
-export function propagateElements(el: OrbitalElements, date: Date): EclipticVec {
+export function propagateElements(el: OrbitalElements, date: Date): EquatorialVec {
   const a = semiMajorAxisAU(el);
   const e = el.eccentricity;
   const n = (2 * Math.PI) / orbitalPeriodDays(el);
@@ -153,11 +153,11 @@ export function propagateElements(el: OrbitalElements, date: Date): EclipticVec 
  * anomaly and time-independent — the trace a comet always sits on. Returns the
  * same frame as {@link propagateElements}.
  */
-export function orbitSample(el: OrbitalElements, samples: number): EclipticVec[] {
+export function orbitSample(el: OrbitalElements, samples: number): EquatorialVec[] {
   const a = semiMajorAxisAU(el);
   const e = el.eccentricity;
   const b = a * Math.sqrt(1 - e * e);
-  const points: EclipticVec[] = [];
+  const points: EquatorialVec[] = [];
   for (let k = 0; k <= samples; k++) {
     const E = (k / samples) * 2 * Math.PI;
     points.push(perifocalToEquatorial(a * (Math.cos(E) - e), b * Math.sin(E), el));

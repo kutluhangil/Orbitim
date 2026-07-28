@@ -71,7 +71,7 @@ export function moonOrbitToScene(km: number, parentSceneRadius: number, parentRa
 }
 
 /**
- * Position of a body in scene space. The heliocentric ecliptic vector keeps its
+ * Position of a body in scene space. The heliocentric EQJ vector keeps its
  * direction; only its magnitude is compressed, so alignments and conjunctions
  * stay geometrically truthful.
  */
@@ -79,6 +79,6 @@ export function heliocentricToScene(v: { x: number; y: number; z: number }): [nu
   const distance = Math.hypot(v.x, v.y, v.z);
   if (distance === 0) return [0, 0, 0];
   const scaled = auToScene(distance) / distance;
-  // Ecliptic z becomes scene y so the ecliptic plane lies flat in the viewport.
+  // EQJ z becomes scene y, preserving the full three-dimensional bearing.
   return [v.x * scaled, v.z * scaled, -v.y * scaled];
 }

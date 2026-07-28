@@ -4,7 +4,7 @@ import { laplaceMoonDirection, laplaceMoonVectorKm } from './moonElements';
 import { propagateElements } from './cometOrbit';
 
 /** Right-handed J2000 mean-equator (EQJ) vector, astronomical units. */
-export interface EclipticVec {
+export interface EquatorialVec {
   x: number;
   y: number;
   z: number;
@@ -13,9 +13,9 @@ export interface EclipticVec {
 export interface BodyState {
   id: BodyId;
   /** Position relative to the Sun, in the EQJ frame, AU. */
-  heliocentric: EclipticVec;
+  heliocentric: EquatorialVec;
   /** Position relative to Earth, AU. Zero-length for Earth itself. */
-  geocentric: EclipticVec;
+  geocentric: EquatorialVec;
   /** Distance from Earth, AU. */
   distanceFromEarthAU: number;
   /** Distance from the Sun, AU. */
@@ -29,7 +29,7 @@ export interface BodyState {
 const AU_KM = 149597870.7;
 const LIGHT_SECONDS_PER_AU = 499.004784;
 
-function length(v: EclipticVec): number {
+function length(v: EquatorialVec): number {
   return Math.hypot(v.x, v.y, v.z);
 }
 
@@ -39,7 +39,7 @@ function length(v: EclipticVec): number {
  * and the Galilean satellites; the remaining moons use their mean orbital
  * elements, which is accurate enough at the scene scales used here.
  */
-function moonHeliocentric(id: BodyId, date: Date): EclipticVec {
+function moonHeliocentric(id: BodyId, date: Date): EquatorialVec {
   const record = getBodyRecord(id);
   if (!record.parent) throw new Error(`Body ${id} declared as moon without a parent`);
   const parent = getHeliocentric(getBodyRecord(record.parent).id, date);
@@ -77,7 +77,7 @@ function moonHeliocentric(id: BodyId, date: Date): EclipticVec {
   };
 }
 
-function heliocentricOf(id: BodyId, date: Date): EclipticVec {
+function heliocentricOf(id: BodyId, date: Date): EquatorialVec {
   const record = getBodyRecord(id);
   if (record.id === 'sun') return { x: 0, y: 0, z: 0 };
   if (record.kind === 'moon') return moonHeliocentric(id, date);
@@ -96,14 +96,14 @@ function heliocentricOf(id: BodyId, date: Date): EclipticVec {
  * — once per body, plus once more per moon for its parent — and a VSOP87
  * evaluation is far too expensive to repeat for an answer already computed.
  */
-const positionCache = new Map<BodyId, { ms: number; value: EclipticVec }>();
+const positionCache = new Map<BodyId, { ms: number; value: EquatorialVec }>();
 
 /**
  * Heliocentric position only, without the illumination and geometry work
  * {@link getBodyState} does. This is the per-frame path: the scene needs
  * every body's position every frame and none of the derived readouts.
  */
-export function getHeliocentric(id: BodyId, date: Date): EclipticVec {
+export function getHeliocentric(id: BodyId, date: Date): EquatorialVec {
   const ms = date.getTime();
   const cached = positionCache.get(id);
   if (cached && cached.ms === ms) return cached.value;
@@ -159,7 +159,7 @@ export function getBodyState(id: BodyId, date: Date): BodyState {
  * Moons with neither source return null and the caller falls back to a mean
  * circular model.
  */
-export function moonDirection(id: BodyId, date: Date): EclipticVec | null {
+export function moonDirection(id: BodyId, date: Date): EquatorialVec | null {
   const record = getBodyRecord(id);
   if (record.id === 'moon') {
     const g = GeoVector(Body.Moon, MakeTime(date), true);
@@ -172,7 +172,7 @@ export function moonDirection(id: BodyId, date: Date): EclipticVec | null {
   return laplaceMoonDirection(id, date);
 }
 
-function unit(v: EclipticVec): EclipticVec {
+function unit(v: EquatorialVec): EquatorialVec {
   const len = length(v);
   if (len === 0) throw new Error('Cannot normalise a zero-length direction vector');
   return { x: v.x / len, y: v.y / len, z: v.z / len };

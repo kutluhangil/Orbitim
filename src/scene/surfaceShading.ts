@@ -173,6 +173,16 @@ const AERIAL_STRENGTH = 0.55;
 /** How dark a fragment gets under the thickest cloud directly up-sun of it. */
 const CLOUD_SHADOW_STRENGTH = 0.6;
 
+/**
+ * Earth cloud-shell height as fractions of the equatorial radius.
+ *
+ * The base shell sits at roughly 9.5 km and dense cloud tops can displace to
+ * about 20 km. That keeps the layer physically separate without turning it into
+ * a second atmosphere several hundred kilometres above the surface.
+ */
+export const EARTH_CLOUD_BASE_ALTITUDE_RATIO = 0.0015;
+export const EARTH_CLOUD_RELIEF_RATIO = 0.00165;
+
 /** How dark the ring shadow falls across the planet under the densest bands. */
 const RING_SHADOW_STRENGTH = 0.8;
 
@@ -256,7 +266,11 @@ export function useBodyShading(
       uCloudShadow: { value: NO_CLOUD as THREE.Texture },
       // Cloud shell altitude in scene units: the horizontal throw of a shadow is
       // this times the tangent of the sun's zenith angle.
-      uCloudReach: { value: sceneRadiusOf(id) * 0.006 },
+      uCloudReach: {
+        value:
+          sceneRadiusOf(id) *
+          (EARTH_CLOUD_BASE_ALTITUDE_RATIO + EARTH_CLOUD_RELIEF_RATIO * 0.6)
+      },
       // Ring geometry is written in each render below, so these are only
       // placeholders — the memo does not depend on the ring inputs.
       uRingCenter: { value: new THREE.Vector3() },

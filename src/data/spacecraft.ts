@@ -1,4 +1,4 @@
-import { getHeliocentric, type EclipticVec } from '../lib/ephemeris/positions';
+import { getHeliocentric, type EquatorialVec } from '../lib/ephemeris/positions';
 import { elementsAtEpoch, propagateElements, orbitSample, type OrbitalElements } from '../lib/ephemeris/cometOrbit';
 
 /**
@@ -55,7 +55,7 @@ export interface Spacecraft {
 /** A single heliocentric vector returned by JPL Horizons for an exact epoch. */
 export interface SpacecraftLiveState {
   epochMs: number;
-  position: EclipticVec;
+  position: EquatorialVec;
   source: string;
 }
 
@@ -107,7 +107,7 @@ export const SPACECRAFT: readonly Spacecraft[] = [
 ];
 
 /** Live heliocentric position (EQJ, AU) of a craft at an instant. */
-export function spacecraftPosition(craft: Spacecraft, date: Date, live?: SpacecraftLiveState): EclipticVec {
+export function spacecraftPosition(craft: Spacecraft, date: Date, live?: SpacecraftLiveState): EquatorialVec {
   // A vector is exact only for its supplied epoch. Do not extrapolate it or imply
   // it remains live after the simulation clock moves away from that instant.
   if (live && Math.abs(live.epochMs - date.getTime()) <= 60_000) return live.position;
@@ -131,6 +131,6 @@ export function spacecraftPosition(craft: Spacecraft, date: Date, live?: Spacecr
 }
 
 /** The closed heliocentric ellipse for an orbiting craft, or null for the rest. */
-export function spacecraftOrbit(craft: Spacecraft): EclipticVec[] | null {
+export function spacecraftOrbit(craft: Spacecraft): EquatorialVec[] | null {
   return craft.model.kind === 'orbit' ? orbitSample(craft.model.elements, 360) : null;
 }
