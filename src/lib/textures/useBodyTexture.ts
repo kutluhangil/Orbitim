@@ -7,23 +7,36 @@ import type { BodyTextureSet, Lod } from './registry';
 
 const loader = new THREE.TextureLoader();
 const cache = new Map<string, THREE.Texture>();
+const pending = new Map<string, Promise<THREE.Texture>>();
 
 function load(url: string, colorSpace: THREE.ColorSpace): Promise<THREE.Texture> {
   const cached = cache.get(url);
   if (cached) return Promise.resolve(cached);
-  return new Promise((resolve, reject) => {
+  const inFlight = pending.get(url);
+  if (inFlight) return inFlight;
+
+  const request = new Promise<THREE.Texture>((resolve, reject) => {
     loader.load(
       url,
       (texture) => {
         texture.colorSpace = colorSpace;
-        texture.anisotropy = 8;
+        texture.anisotropy = 16;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.generateMipmaps = true;
         cache.set(url, texture);
+        pending.delete(url);
         resolve(texture);
       },
       undefined,
-      () => reject(new Error(`Texture failed to load: ${url}`))
+      () => {
+        pending.delete(url);
+        reject(new Error(`Texture failed to load: ${url}`));
+      }
     );
   });
+  pending.set(url, request);
+  return request;
 }
 
 function release(url: string | undefined): void {
@@ -97,21 +110,31 @@ export function useBodyTexture(id: BodyId, requestedLod: Lod): BodyTextures {
           : Promise.resolve(null)
       ]).then(([map, emissiveMap, cloudMap, ringMap, roughnessMap]) => {
         if (cancelled) return;
-        setTextures((prev) => ({
-          map,
-          emissiveMap,
-          roughnessMap: roughnessMap ?? prev.roughnessMap,
-          cloudMap: cloudMap ?? prev.cloudMap,
-          ringMap,
-          resolvedLod: level
-        }));
+        setTextures((prev) => {
+          // A local cache or a fast connection can resolve the 8K request
+          // before the 2K preview. Never let the late preview downgrade a body
+          // that has already reached its near level.
+          if (level === 'far' && prev.resolvedLod === 'near') return prev;
+          return {
+            map,
+            emissiveMap,
+            roughnessMap: roughnessMap ?? prev.roughnessMap,
+            cloudMap: cloudMap ?? prev.cloudMap,
+            ringMap,
+            resolvedLod: level
+          };
+        });
       });
 
-    apply('far')
-      .then(() => (lod === 'near' && !cancelled ? apply('near') : undefined))
-      .catch((error) => {
-        if (!cancelled) console.error(error);
-      });
+    const report = (error: unknown) => {
+      if (!cancelled) console.error(error);
+    };
+
+    // Start the near request immediately. Waiting for the preview first left a
+    // full-screen Moon or Mercury showing its 2K map while an 8K request sat
+    // behind it in the network queue.
+    void apply('far').catch(report);
+    if (lod === 'near') void apply('near').catch(report);
 
     return () => {
       cancelled = true;

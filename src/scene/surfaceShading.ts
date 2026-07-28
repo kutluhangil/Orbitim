@@ -177,17 +177,6 @@ const CLOUD_SHADOW_STRENGTH = 0.6;
 const RING_SHADOW_STRENGTH = 0.8;
 
 /**
- * The airless rocky worlds carry their relief in their albedo: a crater wall or
- * a mountain flank is a brightness step in the map. Reading that step as a
- * height and bending the shading normal by its gradient lets the terrain catch
- * the light in relief near the terminator instead of lying flat. Kept low, and
- * only for bodies whose maps are true albedo rather than pre-shaded photographs,
- * so it deepens the ground without inventing it.
- */
-const ALBEDO_RELIEF_STRENGTH = 0.16;
-const ALBEDO_RELIEF_BODIES = new Set<BodyId>(['mercury', 'mars', 'moon']);
-
-/**
  * Bound to the cloud-shadow sampler before the cloud map has loaded — a single
  * black texel reads as no cloud, so the surface stays unshadowed rather than
  * sampling a stale or undefined texture.
@@ -255,7 +244,6 @@ export function useBodyShading(
   // so the program never has to recompile when the texture arrives.
   const hasCloudShadow = !!getTextureSet(id)?.cloudMap;
   const hasRingShadow = !!getBodyRecord(id).rings;
-  const hasAlbedoRelief = ALBEDO_RELIEF_BODIES.has(id);
 
   const uniforms = useMemo(
     () => ({
@@ -403,35 +391,6 @@ export function useBodyShading(
       }
     `;
 
-    // Albedo relief: bend the shading normal by the gradient of the map's own
-    // brightness, so a bright crater rim or a dark basin floor catches the light
-    // in three dimensions. The screen-space derivatives of the view position
-    // give the basis; the height is one luminance read, so no extra samples are
-    // needed. Runs where three has just set the geometric `normal`.
-    const ALBEDO_RELIEF_FRAGMENT = /* glsl */ `
-      #ifdef USE_MAP
-      {
-        // The height is read from a coarse mip of the map, not the full-detail
-        // texel: a per-pixel read turns the map's own grain and JPEG blocks into
-        // a field of false normals, whereas the blurred level carries only the
-        // real landforms — basins, crater clusters, the big volcanoes — so the
-        // relief deepens those without boiling the ground.
-        float arHeight = dot( texture2D( map, vMapUv, 3.5 ).rgb, vec3( 0.299, 0.587, 0.114 ) )
-          * ${ALBEDO_RELIEF_STRENGTH.toFixed(2)};
-        vec3 arPos = - vViewPosition;
-        vec3 arDpx = dFdx( arPos );
-        vec3 arDpy = dFdy( arPos );
-        vec3 arR1 = cross( arDpy, normal );
-        vec3 arR2 = cross( normal, arDpx );
-        float arDet = dot( arDpx, arR1 );
-        if ( abs( arDet ) > 1e-8 ) {
-          vec3 arGrad = ( arR1 * dFdx( arHeight ) + arR2 * dFdy( arHeight ) ) / arDet;
-          normal = normalize( normal - arGrad );
-        }
-      }
-      #endif
-    `;
-
     return {
       surface: {
         onBeforeCompile: (shader) => {
@@ -468,12 +427,6 @@ export function useBodyShading(
               '#include <emissivemap_fragment>',
               `#include <emissivemap_fragment>
                totalEmissiveRadiance *= smoothstep( 0.12, -0.22, orbitimDaylight() );`
-            )
-            // Relief is read straight after three sets the geometric normal, so
-            // the perturbed normal carries through the whole light loop.
-            .replace(
-              '#include <normal_fragment_begin>',
-              `#include <normal_fragment_begin>\n${hasAlbedoRelief ? ALBEDO_RELIEF_FRAGMENT : ''}`
             );
         },
         /* three caches compiled programs by material parameters alone, so a
@@ -482,7 +435,7 @@ export function useBodyShading(
         customProgramCacheKey: () =>
           `orbitim-surface${drifts ? '-drift' : ''}${hasAerial ? '-aerial' : ''}${
             hasCloudShadow ? '-cloudshadow' : ''
-          }${hasRingShadow ? '-ringshadow' : ''}${hasAlbedoRelief ? '-relief' : ''}`
+          }${hasRingShadow ? '-ringshadow' : ''}`
       },
 
       clouds: {
@@ -503,5 +456,5 @@ export function useBodyShading(
         customProgramCacheKey: () => 'orbitim-clouds'
       }
     };
-  }, [uniforms, drifts, hasAerial, hasCloudShadow, hasRingShadow, hasAlbedoRelief]);
+  }, [uniforms, drifts, hasAerial, hasCloudShadow, hasRingShadow]);
 }
