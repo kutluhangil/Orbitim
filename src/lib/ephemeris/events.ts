@@ -2,6 +2,7 @@ import {
   MoonPhase, SearchMoonPhase, SearchGlobalSolarEclipse, SearchLunarEclipse,
   SearchTransit, Illumination, Ecliptic, GeoVector, MakeTime, Body
 } from 'astronomy-engine';
+import type { BodyId } from './bodies';
 
 /**
  * Upcoming sky events, all computed from astronomy-engine for the current
@@ -18,6 +19,8 @@ export interface SkyEvent {
   date: Date;
   /** A short qualifier — the eclipse type, the planets involved, and so on. */
   detail: string;
+  /** The scientifically relevant body to frame when the event is visited. */
+  focusBody: BodyId;
 }
 
 export interface MoonPhaseNow {
@@ -67,12 +70,12 @@ function wrap180(delta: number): number {
   return d;
 }
 
-const CONJUNCTION_BODIES: readonly { body: Body; name: string }[] = [
-  { body: Body.Mercury, name: 'Mercury' },
-  { body: Body.Venus, name: 'Venus' },
-  { body: Body.Mars, name: 'Mars' },
-  { body: Body.Jupiter, name: 'Jupiter' },
-  { body: Body.Saturn, name: 'Saturn' }
+const CONJUNCTION_BODIES: readonly { body: Body; id: BodyId; name: string }[] = [
+  { body: Body.Mercury, id: 'mercury', name: 'Mercury' },
+  { body: Body.Venus, id: 'venus', name: 'Venus' },
+  { body: Body.Mars, id: 'mars', name: 'Mars' },
+  { body: Body.Jupiter, id: 'jupiter', name: 'Jupiter' },
+  { body: Body.Saturn, id: 'saturn', name: 'Saturn' }
 ];
 
 /**
@@ -99,7 +102,8 @@ function nextConjunction(start: Date): SkyEvent | null {
             id: 'conjunction',
             label: `${CONJUNCTION_BODIES[i].name} & ${CONJUNCTION_BODIES[j].name}`,
             date,
-            detail: `in conjunction, ${separation.toFixed(1)}° apart`
+            detail: `in conjunction, ${separation.toFixed(1)}° apart`,
+            focusBody: CONJUNCTION_BODIES[i].id
           };
         }
       }
@@ -124,25 +128,38 @@ export function upcomingEvents(date: Date): SkyEvent[] {
   const events: SkyEvent[] = [];
 
   const fullMoon = SearchMoonPhase(180, date, 40);
-  if (fullMoon) events.push({ id: 'full', label: 'Full Moon', date: fullMoon.date, detail: 'the Moon fully lit' });
+  if (fullMoon) events.push({ id: 'full', label: 'Full Moon', date: fullMoon.date, detail: 'the Moon fully lit', focusBody: 'moon' });
   const newMoon = SearchMoonPhase(0, date, 40);
-  if (newMoon) events.push({ id: 'new', label: 'New Moon', date: newMoon.date, detail: 'the Moon between us and the Sun' });
+  if (newMoon) events.push({ id: 'new', label: 'New Moon', date: newMoon.date, detail: 'the Moon between us and the Sun', focusBody: 'moon' });
 
   const solar = SearchGlobalSolarEclipse(date);
-  events.push({ id: 'solar', label: 'Solar eclipse', date: solar.peak.date, detail: `${capitalise(solar.kind)}, somewhere on Earth` });
+  events.push({ id: 'solar', label: 'Solar eclipse', date: solar.peak.date, detail: `${capitalise(solar.kind)}, somewhere on Earth`, focusBody: 'earth' });
 
   const lunar = SearchLunarEclipse(date);
-  events.push({ id: 'lunar', label: 'Lunar eclipse', date: lunar.peak.date, detail: `${capitalise(lunar.kind)}` });
+  events.push({ id: 'lunar', label: 'Lunar eclipse', date: lunar.peak.date, detail: `${capitalise(lunar.kind)}`, focusBody: 'moon' });
 
   const mercuryTransit = SearchTransit(Body.Mercury, date);
   const venusTransit = SearchTransit(Body.Venus, date);
   const transit = mercuryTransit.peak.date <= venusTransit.peak.date
     ? { info: mercuryTransit, name: 'Mercury' }
     : { info: venusTransit, name: 'Venus' };
-  events.push({ id: 'transit', label: `Transit of ${transit.name}`, date: transit.info.peak.date, detail: 'across the face of the Sun' });
+  events.push({ id: 'transit', label: `Transit of ${transit.name}`, date: transit.info.peak.date, detail: 'across the face of the Sun', focusBody: 'sun' });
 
   const conjunction = nextConjunction(date);
   if (conjunction) events.push(conjunction);
 
   return events.sort((a, b) => a.date.getTime() - b.date.getTime());
+}
+
+/** A concise physical explanation paired with the event-navigation action. */
+export function eventNarrative(event: SkyEvent): string {
+  switch (event.id) {
+    case 'full': return 'Earth is between the Sun and Moon; the lunar near side faces sunlight.';
+    case 'new': return 'The Moon is near the Sun’s direction, so its illuminated hemisphere faces away from Earth.';
+    case 'solar': return 'At peak, the Moon’s shadow geometry aligns with Earth. Visibility remains location-dependent.';
+    case 'lunar': return 'The Moon passes through Earth’s shadow; the precise appearance depends on the umbra crossing.';
+    case 'transit': return 'The planet crosses the Sun’s apparent disc. Safe solar filtration is required for any observation.';
+    case 'conjunction': return 'The bodies share nearly the same ecliptic longitude as viewed from Earth; they remain far apart in space.';
+    default: return event.detail;
+  }
 }

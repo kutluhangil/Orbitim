@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { moonPhaseNow, upcomingEvents } from '../lib/ephemeris/events';
+import { eventNarrative, moonPhaseNow, upcomingEvents, type SkyEvent } from '../lib/ephemeris/events';
 import { useFlight } from '../flight/useFlight';
 import { useSimTime } from '../scene/useSimTime';
 import { useViewSettings } from '../scene/viewSettings';
 import { fetchNearApproaches, type NearApproach } from '../services/nearApproaches';
 import { useSpacecraftState } from '../scene/spacecraftState';
+import { sonifySkyEvent } from '../lib/audio/sonification';
 
 /**
  * The sky's calendar, shown in the overview where the right-hand column is free.
@@ -33,6 +34,8 @@ export function EventsPanel() {
   const [approaches, setApproaches] = useState<NearApproach[]>([]);
   const [approachSource, setApproachSource] = useState<string | null>(null);
   const [approachError, setApproachError] = useState<string | null>(null);
+  const [sonifying, setSonifying] = useState<string | null>(null);
+  const [sonificationError, setSonificationError] = useState<string | null>(null);
   const horizonsStatus = useSpacecraftState((state) => state.status);
   const horizonsUpdatedAt = useSpacecraftState((state) => state.updatedAt);
   const horizonsError = useSpacecraftState((state) => state.error);
@@ -79,6 +82,25 @@ export function EventsPanel() {
     });
   };
 
+  const visitEvent = (event: SkyEvent) => {
+    const time = useSimTime.getState();
+    time.setDate(event.date);
+    if (time.playing) time.togglePlaying();
+    useFlight.getState().flyTo(event.focusBody);
+  };
+
+  const playEvent = async (event: SkyEvent) => {
+    setSonifying(event.id);
+    setSonificationError(null);
+    try {
+      await sonifySkyEvent(event, now);
+    } catch (cause) {
+      setSonificationError(`Event sonification unavailable: ${cause instanceof Error ? cause.message : String(cause)}`);
+    } finally {
+      setSonifying(null);
+    }
+  };
+
   return (
     <aside
       className={`pointer-events-auto fixed inset-x-0 bottom-[var(--time-bar)] z-10 hidden max-h-[46dvh] overflow-y-auto rounded-t-2xl border-t px-4 pb-5 pt-4 backdrop-blur-xl [@media(min-height:560px)]:block md:inset-x-auto md:bottom-auto md:right-6 md:top-1/2 md:max-h-[80vh] md:w-[20rem] md:-translate-y-1/2 md:rounded-2xl md:border md:p-6 ${surface}`}
@@ -108,6 +130,11 @@ export function EventsPanel() {
               <div className="min-w-0">
                 <div className="text-[13px] tracking-tight">{event.label}</div>
                 <div className={`truncate text-[11px] leading-snug ${muted}`}>{event.detail}</div>
+                <p className={`mt-1 text-[10px] leading-snug ${muted}`}>{eventNarrative(event)}</p>
+                <div className="mt-2 flex items-center gap-3">
+                  <button type="button" onClick={() => visitEvent(event)} className={`text-[9px] uppercase tracking-[0.16em] ${light ? 'text-sky-700' : 'text-sky-200/80'}`}>Visit event</button>
+                  <button type="button" onClick={() => void playEvent(event)} disabled={sonifying !== null} className={`text-[9px] uppercase tracking-[0.16em] disabled:cursor-wait ${light ? 'text-slate-500' : 'text-white/45'}`}>{sonifying === event.id ? 'Playing…' : 'Hear data'}</button>
+                </div>
               </div>
               <div className="shrink-0 text-right">
                 <div className={`text-[11px] tabular-nums ${light ? 'text-sky-600' : 'text-sky-200/80'}`}>{when.rel}</div>
@@ -117,6 +144,8 @@ export function EventsPanel() {
           );
         })}
       </ul>
+      {sonificationError && <p className="mt-3 text-[10px] leading-relaxed text-red-300/90">{sonificationError}</p>}
+      <p className={`mt-3 text-[10px] leading-relaxed ${muted}`}>Hear data maps days until the event to pitch and event class to pulse count. It is not an astronomical audio recording.</p>
 
       <div className={`mt-6 border-t pt-4 ${light ? 'border-slate-200' : 'border-white/8'}`}>
         <div className="flex items-center justify-between gap-2">
