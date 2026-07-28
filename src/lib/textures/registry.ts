@@ -15,6 +15,8 @@ export interface BodyTextureSet {
   emissiveMap?: Record<Lod, string>;
   /** Ocean/land roughness, low over sea for the sun-glint. Earth only. */
   roughnessMap?: string;
+  /** Linear elevation data, loaded only for a close surface visit. */
+  heightMap?: string;
   /** Separate cloud shell, Earth only. */
   cloudMap?: string;
   /** Ring alpha strip, sampled radially. */
@@ -40,7 +42,10 @@ export const TEXTURES: Partial<Record<BodyId, BodyTextureSet>> = {
     roughnessMap: `${T}/earth_roughness.webp`,
     cloudMap: `${T}/8k_earth_clouds.jpg`
   },
-  mars: { map: { far: `${T}/2k_mars.jpg`, near: `${T}/8k_mars.jpg` } },
+  mars: {
+    map: { far: `${T}/2k_mars.jpg`, near: `${T}/8k_mars.jpg` },
+    heightMap: `${T}/mars_mola_topography.png`
+  },
   jupiter: { map: { far: `${T}/2k_jupiter.jpg`, near: `${T}/8k_jupiter.jpg` } },
   saturn: {
     map: { far: `${T}/2k_saturn.jpg`, near: `${T}/8k_saturn.jpg` },

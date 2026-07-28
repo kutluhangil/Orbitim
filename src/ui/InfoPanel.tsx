@@ -139,6 +139,18 @@ export function InfoPanel() {
           </section>
         )}
 
+        {scientific && target === 'mars' && (
+          <section className="mb-5 border-y border-sky-300/10 py-4">
+            <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-sky-200/60">Surface relief</h3>
+            <dl>
+              <Row label="Elevation" value="MOLA · PDS" />
+              <Row label="Coverage" value="Global · 16 px/degree" />
+              <Row label="Measurements" value="MGS · 1999–2001" />
+              <Row label="Relief scale" value="Physical elevation" />
+            </dl>
+          </section>
+        )}
+
         {nowMode && (target === 'earth' || target === 'sun') && <ObservationCard target={target} />}
 
         <section className="mb-5">

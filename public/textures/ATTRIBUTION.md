@@ -9,6 +9,18 @@ They are based on NASA elevation and imagery data.
 Files are re-encoded at a lower JPEG quality to keep download sizes practical.
 No other modification was made.
 
+## Mars elevation
+
+`mars_mola_topography.png` is a linear, grayscale elevation map generated from
+the NASA PDS MGS MOLA MEGDR product
+[`MEGT90N000EB.IMG`](https://pds-geosciences.wustl.edu/mgs/mgs-m-mola-5-megdr-l3-v1/mgsl_300x/meg016/megt90n000eb.img).
+It is the global median-topography grid collected by Mars Global Surveyor’s Mars
+Orbiter Laser Altimeter during 1999–2001 (16 pixels per degree; elevations in
+meters relative to the MOLA areoid). The signed 16-bit source values are linearly
+mapped from the product bounds −8,206 m to 21,181 m and resampled to 4096×2048
+for browser delivery. The renderer restores those physical elevation bounds; it
+does not derive relief from the coloured Mars albedo or exaggerate the height.
+
 ## Galilean moon surfaces
 
 `nasa_io.jpg`, `nasa_europa.jpg`, `nasa_ganymede.jpg` and

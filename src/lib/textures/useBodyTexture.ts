@@ -53,6 +53,7 @@ function releaseNearTextures(set: BodyTextureSet): void {
   if (set.map.near !== set.map.far) release(set.map.near);
   if (set.emissiveMap && set.emissiveMap.near !== set.emissiveMap.far) release(set.emissiveMap.near);
   release(set.roughnessMap);
+  release(set.heightMap);
   release(set.cloudMap);
 }
 
@@ -60,6 +61,7 @@ export interface BodyTextures {
   map: THREE.Texture | null;
   emissiveMap: THREE.Texture | null;
   roughnessMap: THREE.Texture | null;
+  heightMap: THREE.Texture | null;
   cloudMap: THREE.Texture | null;
   ringMap: THREE.Texture | null;
   /** Highest level of detail currently resident. */
@@ -70,6 +72,7 @@ const EMPTY: BodyTextures = {
   map: null,
   emissiveMap: null,
   roughnessMap: null,
+  heightMap: null,
   cloudMap: null,
   ringMap: null,
   resolvedLod: null
@@ -110,8 +113,11 @@ export function useBodyTexture(id: BodyId, requestedLod: Lod): BodyTextures {
         // close, and phones stay on the far maps.
         set.roughnessMap && level === 'near'
           ? load(set.roughnessMap, THREE.NoColorSpace)
-          : Promise.resolve(null)
-      ]).then(([map, emissiveMap, cloudMap, ringMap, roughnessMap]) => {
+          : Promise.resolve(null),
+        // Elevation is a measured scalar field, never a colour channel. It is
+        // close-view data only: at system scale physical relief is sub-pixel.
+        set.heightMap && level === 'near' ? load(set.heightMap, THREE.NoColorSpace) : Promise.resolve(null)
+      ]).then(([map, emissiveMap, cloudMap, ringMap, roughnessMap, heightMap]) => {
         if (cancelled) return;
         setTextures((prev) => {
           // A local cache or a fast connection can resolve the 8K request
@@ -122,6 +128,7 @@ export function useBodyTexture(id: BodyId, requestedLod: Lod): BodyTextures {
             map,
             emissiveMap,
             roughnessMap: roughnessMap ?? prev.roughnessMap,
+            heightMap: heightMap ?? prev.heightMap,
             cloudMap: cloudMap ?? prev.cloudMap,
             ringMap,
             resolvedLod: level

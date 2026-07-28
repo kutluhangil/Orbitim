@@ -49,6 +49,15 @@ const SURFACE_ROUGHNESS: Partial<Record<BodyId, number>> = {
   neptune: 0.78
 };
 
+/**
+ * Elevation bounds from PDS MGS MOLA MEGT90N000EB: a global 16 px/degree
+ * median-topography product in meters, converted to a linear 4K data map.
+ * The actual height ratio is retained; the terrain is never artistically
+ * amplified to make it read from system scale.
+ */
+const MARS_MOLA_MIN_KM = -8.206;
+const MARS_MOLA_MAX_KM = 21.181;
+
 export function Body({ id, registry, onSelect }: BodyProps) {
   const record = getBodyRecord(id);
   const group = useRef<THREE.Group>(null);
@@ -97,6 +106,12 @@ export function Body({ id, registry, onSelect }: BodyProps) {
   );
 
   const radius = sceneRadiusOf(id);
+  const displacementScale = id === 'mars' && textures.heightMap
+    ? radius * (MARS_MOLA_MAX_KM - MARS_MOLA_MIN_KM) / record.radiusKm
+    : 0;
+  const displacementBias = id === 'mars' && textures.heightMap
+    ? radius * MARS_MOLA_MIN_KM / record.radiusKm
+    : 0;
   // Irregular moons keep all three measured axes. Rapidly rotating planets keep
   // their equatorial bulge rather than being forced into a perfect sphere.
   const shapeScale = record.shapeAxesKm
@@ -151,7 +166,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
           <SunSurface map={textures.map} />
         ) : (
           <meshStandardMaterial
-            key={`${textures.map?.uuid ?? 'flat'}-${textures.emissiveMap?.uuid ?? 'none'}-${textures.roughnessMap?.uuid ?? 'rough'}`}
+            key={`${textures.map?.uuid ?? 'flat'}-${textures.emissiveMap?.uuid ?? 'none'}-${textures.roughnessMap?.uuid ?? 'rough'}-${textures.heightMap?.uuid ?? 'flat'}`}
             map={textures.map ?? undefined}
             /* The registry colour is the fallback for a body with neither a
                published map nor a generated surface; anything that supplies its
@@ -168,6 +183,9 @@ export function Body({ id, registry, onSelect }: BodyProps) {
                passes it through untouched. Everything else keeps the flat matte. */
             roughnessMap={textures.roughnessMap ?? undefined}
             roughness={textures.roughnessMap ? 1 : (SURFACE_ROUGHNESS[id] ?? 0.92)}
+            displacementMap={textures.heightMap ?? undefined}
+            displacementScale={displacementScale}
+            displacementBias={displacementBias}
             metalness={0}
             onBeforeCompile={surfaceMaterial.onBeforeCompile}
             customProgramCacheKey={surfaceMaterial.customProgramCacheKey}
