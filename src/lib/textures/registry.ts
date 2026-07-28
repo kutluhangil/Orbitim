@@ -69,7 +69,9 @@ export const TEXTURES: Partial<Record<BodyId, BodyTextureSet>> = {
   pluto: { map: { far: `${T}/pluto.jpg`, near: `${T}/pluto.jpg` } },
   charon: { map: { far: `${T}/charon.jpg`, near: `${T}/charon.jpg` } },
   // Cassini/Voyager mosaics for the mid-sized Saturnian moons. Mimas and the
-  // Uranian moons have no clean global map, so they keep their flat shaded tint.
+  // Uranian moons use their measured NASA 3D Resources models on close visit;
+  // their far-system markers remain intentionally simple rather than claiming
+  // incomplete imagery is a global mosaic.
   enceladus: { map: { far: `${T}/enceladus.jpg`, near: `${T}/enceladus.jpg` } },
   rhea: { map: { far: `${T}/rhea.jpg`, near: `${T}/rhea.jpg` } },
   iapetus: { map: { far: `${T}/iapetus.jpg`, near: `${T}/iapetus.jpg` } }

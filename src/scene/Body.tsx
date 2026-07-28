@@ -77,6 +77,11 @@ export function Body({ id, registry, onSelect }: BodyProps) {
   const phase = useFlight((s) => s.phase);
   const target = useFlight((s) => s.target);
   const lod = lodFor(id, phase, target);
+  // NASA GLB assets are the close-inspection representation. Keeping each one
+  // mounted in the overview eagerly parses every high-poly source model before
+  // a visitor has chosen a moon, which competes with the live ephemeris and
+  // first scene render for bandwidth and GPU memory.
+  const nasaModelUrl = record.nasaModelUrl;
   const textures = useBodyTexture(id, lod);
 
   // A ringed planet takes its own ring's shadow across it. The ring lies in the
@@ -163,8 +168,8 @@ export function Body({ id, registry, onSelect }: BodyProps) {
           document.body.style.cursor = '';
         }}
       >
-        {record.nasaModelUrl ? (
-          <NasaMoonModel url={record.nasaModelUrl} radius={radius} />
+        {nasaModelUrl && lod === 'near' ? (
+          <NasaMoonModel url={nasaModelUrl} radius={radius} />
         ) : (
           <mesh scale={shapeScale}>
             <sphereGeometry args={[radius, SEGMENTS[lod], SEGMENTS[lod] / 2]} />

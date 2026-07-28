@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Deferred NASA GLB moon model parsing until a visitor approaches that moon, preserving the source-backed close render while reducing overview network and GPU pressure.
 - Replaced the overlapping mobile top chrome with one accessible scene-control cockpit for modes, layers, theme, language and sharing.
 - Added source-backed NASA GLB renders for Triton, Titania, Oberon, Miranda, Mimas, Titan, Phobos and Deimos; added Tethys and Dione with NASA 3D models, JPL Horizons epoch phases and documented source attribution.
 - Added hover, keyboard and touch-accessible child moon docks above their parent worlds, so every currently rendered natural satellite can be visited directly without overloading the primary solar-system rail.
