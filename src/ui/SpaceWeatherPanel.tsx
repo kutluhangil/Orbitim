@@ -56,7 +56,7 @@ export function SpaceWeatherPanel() {
     setLoading(true);
     setError(null);
     try {
-      const next = await fetchSpaceWeather(new Date(), signal);
+      const next = await fetchSpaceWeather(signal);
       if (!signal?.aborted) {
         setSnapshot(next);
         useSolarActivity.getState().setSnapshot(next);
@@ -98,7 +98,7 @@ export function SpaceWeatherPanel() {
           <h2 className={`text-[10px] uppercase tracking-[0.28em] ${light ? 'text-sky-600/80' : 'text-sky-300/70'}`}>
             Solar weather
           </h2>
-          <p className={`mt-1 text-[10px] ${muted}`}>NASA DONKI · observed reports</p>
+          <p className={`mt-1 text-[10px] ${muted}`}>NASA DONKI · server-cached reports</p>
         </div>
         <button
           type="button"

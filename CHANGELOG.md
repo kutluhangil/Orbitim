@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Moved NASA DONKI requests behind a cached Vercel route so a private server key is never exposed and quota failures are explicit.
 - Added event visits and an explicitly data-mapped Web Audio sonification for the astronomical calendar.
 - Added a compact mobile observer sheet for local sky, ISS and on-demand Starlink predictions.
 - Added JPL Horizons-backed spacecraft vectors and a JPL CNEOS close-approach feed through constrained Vercel API routes.

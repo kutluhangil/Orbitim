@@ -1,9 +1,3 @@
-const NASA_DONKI_BASE_URL = 'https://api.nasa.gov/DONKI';
-
-// NASA documents DEMO_KEY as its public, rate-limited key. Deployments can use
-// their own key without exposing it in source by setting VITE_NASA_API_KEY.
-const NASA_API_KEY = import.meta.env.VITE_NASA_API_KEY ?? 'DEMO_KEY';
-
 interface NasaFlare {
   flrID?: string;
   peakTime?: string;
@@ -60,10 +54,6 @@ export interface SpaceWeatherSnapshot {
   latestGeomagneticActivity: GeomagneticActivity | null;
 }
 
-function formatUtcDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
 function parseNasaDate(value: string | undefined, field: string): Date {
   if (!value) throw new Error(`NASA DONKI response is missing ${field}`);
   const date = new Date(value);
@@ -80,31 +70,14 @@ function latestByDate<T>(items: T[], getDate: (item: T) => Date): T | null {
   }, null);
 }
 
-async function fetchDonkiArray<T>(endpoint: string, startDate: string, endDate: string, signal?: AbortSignal): Promise<T[]> {
-  const url = new URL(`${NASA_DONKI_BASE_URL}/${endpoint}`);
-  url.searchParams.set('startDate', startDate);
-  url.searchParams.set('endDate', endDate);
-  url.searchParams.set('api_key', NASA_API_KEY);
-
-  const response = await fetch(url, { signal });
-  const body = await response.text();
-  if (!response.ok) {
-    throw new Error(`NASA DONKI ${endpoint} request failed with HTTP ${response.status}: ${body}`);
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(body);
-  } catch (cause) {
-    throw new Error(
-      `NASA DONKI ${endpoint} returned invalid JSON: ${cause instanceof Error ? cause.message : String(cause)}`
-    );
-  }
-
-  if (!Array.isArray(parsed)) {
-    throw new Error(`NASA DONKI ${endpoint} returned an unexpected payload: ${body}`);
-  }
-  return parsed as T[];
+interface DonkiPayload {
+  flares?: unknown;
+  cmes?: unknown;
+  storms?: unknown;
+  fetchedAt?: unknown;
+  source?: unknown;
+  error?: unknown;
+  detail?: unknown;
 }
 
 function toSolarFlare(record: NasaFlare): SolarFlare {
@@ -141,25 +114,27 @@ function toGeomagneticActivity(record: NasaGeomagneticStorm): GeomagneticActivit
   };
 }
 
-/** Fetches the last two weeks of observed NASA DONKI flare, CME and Kp reports. */
-export async function fetchSpaceWeather(now = new Date(), signal?: AbortSignal): Promise<SpaceWeatherSnapshot> {
-  const start = new Date(now);
-  start.setUTCDate(start.getUTCDate() - 14);
-  const startDate = formatUtcDate(start);
-  const endDate = formatUtcDate(now);
+/** Fetches server-cached observed NASA DONKI reports without exposing the API key. */
+export async function fetchSpaceWeather(signal?: AbortSignal): Promise<SpaceWeatherSnapshot> {
+  const response = await fetch('/api/space-weather', { signal });
+  const payload = await response.json() as DonkiPayload;
+  if (!response.ok) throw new Error(`${String(payload.error ?? 'NASA solar weather request failed.')}${payload.detail ? ` ${String(payload.detail)}` : ''}`);
+  if (!Array.isArray(payload.flares) || !Array.isArray(payload.cmes) || !Array.isArray(payload.storms) || typeof payload.fetchedAt !== 'string' || typeof payload.source !== 'string') {
+    throw new Error('NASA solar weather response did not have the expected shape.');
+  }
+  const fetchedAt = new Date(payload.fetchedAt);
+  if (Number.isNaN(fetchedAt.getTime())) throw new Error('NASA solar weather response did not contain a valid fetch time.');
 
-  const [flares, cmes, storms] = await Promise.all([
-    fetchDonkiArray<NasaFlare>('FLR', startDate, endDate, signal),
-    fetchDonkiArray<NasaCme>('CME', startDate, endDate, signal),
-    fetchDonkiArray<NasaGeomagneticStorm>('GST', startDate, endDate, signal)
-  ]);
+  const flares = payload.flares as NasaFlare[];
+  const cmes = payload.cmes as NasaCme[];
+  const storms = payload.storms as NasaGeomagneticStorm[];
 
   const parsedFlares = flares.map(toSolarFlare);
   const parsedCmes = cmes.map(toCme);
   const parsedStorms = storms.map(toGeomagneticActivity);
 
   return {
-    fetchedAt: now,
+    fetchedAt,
     latestFlare: latestByDate(parsedFlares, (flare) => flare.peakTime),
     latestCme: latestByDate(parsedCmes, (cme) => cme.startTime),
     latestGeomagneticActivity: latestByDate(parsedStorms, (storm) => storm.startTime)
