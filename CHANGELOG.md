@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added physical-space Solar Illumination inputs, scientific contrast mode, and an on-scene Explore/Scientific/Now mode selector so visual scale compression no longer dictates eclipse geometry.
 - Strengthened Earth's independently advecting cloud shell by treating the NASA-derived grayscale plate as linear density instead of double-attenuated colour, and removed the Sun's meridian seam with periodic spherical noise, wrapped sampling and a brighter structured corona.
 - Moved landing and rover exploration details out of the fixed body dossier into a viewport-safe, accessible card anchored beside the selected surface marker.
 - Replaced Pluto's broken half-black plate with NASA's New Horizons MVIC colour mosaic plus an explicitly featureless fill for unobserved southern coverage, and rebuilt Uranus's ring plane as 13 narrow, faint, body-specific rings with ring-aware camera framing.

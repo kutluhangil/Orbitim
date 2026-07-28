@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { getBodyRecord, getMoonsOf } from '../lib/ephemeris/bodies';
+import { getSolarIllumination } from '../lib/ephemeris/illumination';
 import { auToKm, auToLightMinutes, getBodyState } from '../lib/ephemeris/positions';
 import { BODY_FACTS } from '../data/bodyFacts';
 import { getExploration } from '../data/missions';
 import { useFlight } from '../flight/useFlight';
 import { useSimTime } from '../scene/useSimTime';
+import { useViewSettings } from '../scene/viewSettings';
 import { useSiteSelection } from '../scene/siteSelection';
 import { useIsCompact } from './useMediaQuery';
 import { BodyDisc } from './BodyDisc';
@@ -17,6 +19,12 @@ function formatKm(km: number): string {
 function formatLightTravelTime(minutes: number): string {
   if (minutes < 1) return `${(minutes * 60).toFixed(1)} s`;
   return `${minutes.toFixed(1)} min`;
+}
+
+function formatSolarFlux(flux: number | null): string {
+  if (flux === null) return 'not defined';
+  if (flux >= 0.1) return `${flux.toFixed(2)}× Earth`;
+  return `${(flux * 100).toFixed(1)}% Earth`;
 }
 
 /**
@@ -35,6 +43,7 @@ export function InfoPanel() {
   const compact = useIsCompact();
   const selectedSiteId = useSiteSelection((s) => s.selected);
   const selectSite = useSiteSelection((s) => s.select);
+  const scientific = useViewSettings((s) => s.mode === 'scientific');
   const [open, setOpen] = useState(!compact);
   const [, setTick] = useState(0);
 
@@ -52,7 +61,9 @@ export function InfoPanel() {
 
   const record = getBodyRecord(target);
   const facts = BODY_FACTS[target];
-  const state = getBodyState(target, useSimTime.getState().date);
+  const date = useSimTime.getState().date;
+  const state = getBodyState(target, date);
+  const illumination = getSolarIllumination(target, date);
   const moons = getMoonsOf(target);
   const exploration = getExploration(target);
 
@@ -113,6 +124,18 @@ export function InfoPanel() {
             />
           </dl>
         </section>
+
+        {scientific && target !== 'sun' && (
+          <section className="mb-5 border-y border-sky-300/10 py-4">
+            <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-sky-200/60">Illumination</h3>
+            <dl>
+              <Row label="Solar flux" value={formatSolarFlux(illumination.irradianceAtEarths)} />
+              <Row label="Geometry" value="CALCULATED · J2000" />
+              <Row label="Computed at" value={date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC'} />
+              <Row label="Scale" value="Visual distances compressed" />
+            </dl>
+          </section>
+        )}
 
         <section className="mb-5">
           <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">Fact sheet</h3>

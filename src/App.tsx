@@ -9,6 +9,7 @@ import { LaplacePanel } from './ui/LaplacePanel';
 import { TimeControls } from './ui/TimeControls';
 import { Landing } from './ui/Landing';
 import { ViewControls } from './ui/ViewControls';
+import { ExperienceModeControl } from './ui/ExperienceModeControl';
 import { useFlight } from './flight/useFlight';
 import { SatellitePanel } from './ui/SatellitePanel';
 import { SatelliteInfo } from './ui/SatelliteInfo';
@@ -112,6 +113,7 @@ function App() {
           <ObserverPanel />
           <LaplacePanel />
           <SatellitePanel />
+          <ExperienceModeControl />
           <ViewControls />
           <TimeControls />
         </>

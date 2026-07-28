@@ -7,6 +7,7 @@ import { create } from 'zustand';
  * against.
  */
 export type Theme = 'dark' | 'light';
+export type ExperienceMode = 'explore' | 'scientific' | 'now';
 
 interface ViewSettingsState {
   /** Whether the planet, comet and minor-body orbit traces are drawn. */
@@ -14,16 +15,21 @@ interface ViewSettingsState {
   /** Whether the classical constellation figures joining the named stars are drawn. */
   figuresVisible: boolean;
   theme: Theme;
+  /** Changes evidence density rather than the astronomical state itself. */
+  mode: ExperienceMode;
   toggleOrbits: () => void;
   toggleFigures: () => void;
   toggleTheme: () => void;
+  setMode: (mode: ExperienceMode) => void;
 }
 
 export const useViewSettings = create<ViewSettingsState>((set) => ({
   orbitsVisible: true,
   figuresVisible: true,
   theme: 'dark',
+  mode: 'explore',
   toggleOrbits: () => set((s) => ({ orbitsVisible: !s.orbitsVisible })),
   toggleFigures: () => set((s) => ({ figuresVisible: !s.figuresVisible })),
-  toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' }))
+  toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
+  setMode: (mode) => set({ mode })
 }));

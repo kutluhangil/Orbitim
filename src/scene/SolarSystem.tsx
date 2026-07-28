@@ -32,6 +32,7 @@ export function SolarSystem() {
   const flyTo = useFlight((s) => s.flyTo);
   const orbitsVisible = useViewSettings((s) => s.orbitsVisible);
   const light = useViewSettings((s) => s.theme === 'light');
+  const scientific = useViewSettings((s) => s.mode === 'scientific');
 
   useFrame((_, delta) => {
     useSimTime.getState().advance(delta);
@@ -51,12 +52,12 @@ export function SolarSystem() {
           of the nine times it actually is. The exponent below preserves the
           ordering — inner worlds are brighter, outer ones dimmer — at a
           contrast the eye can still read. */}
-      <pointLight position={[0, 0, 0]} intensity={13} decay={0.55} color="#fff4e0" />
+      <pointLight position={[0, 0, 0]} intensity={scientific ? 14 : 13} decay={0.55} color="#fff4e0" />
       {/* On the light field there is no star glow to lift the night sides, so a
           body lit by the Sun alone reads as a black disc against white. A raised
           fill turns the far side to shaded grey instead — enough to see the body
           by, without flattening the terminator the point light draws. */}
-      <ambientLight intensity={light ? 0.55 : 0.08} />
+      <ambientLight intensity={light ? 0.55 : scientific ? 0.018 : 0.08} />
 
       {orbitsVisible &&
         ORBIT_WORLDS.map((world) => (

@@ -14,9 +14,10 @@ import { useViewSettings } from './viewSettings';
  */
 export function Effects() {
   const light = useViewSettings((s) => s.theme === 'light');
+  const scientific = useViewSettings((s) => s.mode === 'scientific');
   return (
     <EffectComposer enableNormalPass={false} multisampling={0}>
-      <Bloom intensity={0.68} luminanceThreshold={0.8} luminanceSmoothing={0.32} mipmapBlur />
+      <Bloom intensity={scientific ? 0.52 : 0.68} luminanceThreshold={0.8} luminanceSmoothing={0.32} mipmapBlur />
       {/* The vignette pulls focus on the dark field; over the light theme the
           same darkening only greys the corners, so it is dropped there. */}
       {light ? <></> : <Vignette eskil={false} offset={0.26} darkness={0.7} />}

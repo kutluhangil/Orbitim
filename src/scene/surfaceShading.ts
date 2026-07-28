@@ -1,11 +1,19 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { getBodyRecord, getMoonsOf, type BodyId } from '../lib/ephemeris/bodies';
+import { getBodyRecord, type BodyId } from '../lib/ephemeris/bodies';
+import {
+  AU_KM,
+  getSolarIllumination,
+  MAX_SOLAR_OCCLUDERS,
+  SUN_RADIUS_KM,
+  solarOccludersFor
+} from '../lib/ephemeris/illumination';
 import { J2000_MS } from '../lib/ephemeris/rotation';
 import { getTextureSet } from '../lib/textures/registry';
 import { sceneRadiusOf, type PositionRegistry } from './bodyPositions';
 import { useSimTime } from './useSimTime';
+import { useViewSettings } from './viewSettings';
 
 /**
  * Surface shading that the stock materials cannot express: eclipse shadows cast
@@ -16,15 +24,13 @@ import { useSimTime } from './useSimTime';
  * rather than replacing them, so the bodies keep three's own lighting, tone
  * mapping and texture handling.
  *
- * The eclipse geometry is exact for the scene as drawn, not for the sky: the
- * scale layer exaggerates every body against its orbit, so a moon covers far
- * more of the Sun here than it does in reality. Eclipses are therefore larger
- * and more frequent than the real ones — the shape, softness and timing are
- * honest to the scene, the rarity is not.
+ * Eclipse discs are evaluated in physical AU coordinates. The separate scene
+ * layer may compress distance and exaggerate radii for navigation, but neither
+ * transformation is permitted to change an umbra's angular geometry.
  */
 
 /** The most occluders any one body has: Jupiter, with the four Galilean moons. */
-const MAX_OCCLUDERS = 4;
+const MAX_OCCLUDERS = MAX_SOLAR_OCCLUDERS;
 
 /**
  * Equatorial jet speed relative to the body's bulk rotation, expressed as the
@@ -37,27 +43,6 @@ const ZONAL_DRIFT: Partial<Record<BodyId, number>> = {
   saturn: 0.0032,
   neptune: 0.0042
 };
-
-/**
- * Bodies that can pass between this body and the Sun. A planet is eclipsed by
- * its own moons, a moon by its planet. Sibling moons are left out: their mutual
- * eclipses are real but far too brief to catch at any playback rate offered.
- */
-function occludersOf(id: BodyId): BodyId[] {
-  const record = getBodyRecord(id);
-  if (record.kind === 'moon') return [record.parent!];
-
-  const moons = getMoonsOf(id);
-  if (moons.length <= MAX_OCCLUDERS) return moons.map((moon) => moon.id);
-
-  // More moons than the shader has slots: keep the ones that cast the largest
-  // shadows — greatest angular radius seen from the planet, radius over orbit —
-  // and drop the rest, whose umbra is a sub-pixel smudge in any case.
-  return [...moons]
-    .sort((a, b) => b.radiusKm / b.orbitRadiusKm! - a.radiusKm / a.orbitRadiusKm!)
-    .slice(0, MAX_OCCLUDERS)
-    .map((moon) => moon.id);
-}
 
 const VARYINGS = /* glsl */ `
   varying vec3 vOrbitimWorld;
@@ -77,14 +62,40 @@ const VERTEX_ASSIGN = /* glsl */ `
 const FRAGMENT_DECLARATIONS = /* glsl */ `
   ${VARYINGS}
 
-  // xyz: occluder centre in world space, w: its radius.
+  // All eclipse values live in physical J2000/AU coordinates. The visible
+  // scene is deliberately compressed and must never alter their angular ratios.
+  uniform vec3 uBodyHeliocentric;
+  uniform float uBodyRadiusAU;
+  // xyz: heliocentric occluder centre in AU, w: measured radius in AU.
   uniform vec4 uOccluders[ ${MAX_OCCLUDERS} ];
   uniform int uOccluderCount;
-  uniform float uSunRadius;
+  uniform float uSunRadiusAU;
+  uniform float uUmbraFloor;
+
+  vec3 orbitimEqjNormal() {
+    vec3 sceneNormal = normalize( vOrbitimNormal );
+    // Orbitim scene axes are EQJ x, z, -y. This restores the physical frame.
+    return vec3( sceneNormal.x, -sceneNormal.z, sceneNormal.y );
+  }
+
+  vec3 orbitimSurfaceAU() {
+    return uBodyHeliocentric + orbitimEqjNormal() * uBodyRadiusAU;
+  }
+
+  vec3 orbitimSunDirectionEQJ() {
+    vec3 point = orbitimSurfaceAU();
+    float distance = length( point );
+    return distance > 0.0 ? -point / distance : vec3( 0.0, 0.0, 0.0 );
+  }
+
+  vec3 orbitimSunDirectionScene() {
+    vec3 direction = orbitimSunDirectionEQJ();
+    return normalize( vec3( direction.x, direction.z, -direction.y ) );
+  }
 
   /** Cosine of the local sun angle: 1 at the subsolar point, -1 at midnight. */
   float orbitimDaylight() {
-    return dot( normalize( vOrbitimNormal ), normalize( -vOrbitimWorld ) );
+    return dot( orbitimEqjNormal(), orbitimSunDirectionEQJ() );
   }
 
   /**
@@ -96,13 +107,14 @@ const FRAGMENT_DECLARATIONS = /* glsl */ `
    * contact, capped at the area ratio. That cap is what gives an annular
    * eclipse — a moon too small or too distant to cover the disc never takes the
    * ground fully dark, however exactly it lines up.
-   */
+  */
   float orbitimSunlight() {
-    float sunDistance = length( vOrbitimWorld );
+    vec3 surfacePoint = orbitimSurfaceAU();
+    float sunDistance = length( surfacePoint );
     if ( sunDistance <= 0.0 ) return 1.0;
 
-    vec3 toSun = -vOrbitimWorld / sunDistance;
-    float sunAngle = asin( clamp( uSunRadius / sunDistance, 0.0, 1.0 ) );
+    vec3 toSun = -surfacePoint / sunDistance;
+    float sunAngle = asin( clamp( uSunRadiusAU / sunDistance, 0.0, 1.0 ) );
     if ( sunAngle <= 0.0 ) return 1.0;
 
     float light = 1.0;
@@ -110,7 +122,7 @@ const FRAGMENT_DECLARATIONS = /* glsl */ `
     for ( int i = 0; i < ${MAX_OCCLUDERS}; i++ ) {
       if ( i >= uOccluderCount ) break;
 
-      vec3 toOccluder = uOccluders[ i ].xyz - vOrbitimWorld;
+      vec3 toOccluder = uOccluders[ i ].xyz - surfacePoint;
       float occluderDistance = length( toOccluder );
       if ( occluderDistance <= 0.0 ) continue;
 
@@ -160,7 +172,8 @@ const DRIFT_MAP_FRAGMENT = /* glsl */ `
  * the ring of atmosphere around the occluder and by the rest of the sky, and a
  * black disc on a planet reads as a hole rather than a shadow.
  */
-const UMBRA_FLOOR = 0.06;
+const CINEMATIC_UMBRA_FLOOR = 0.06;
+const SCIENTIFIC_UMBRA_FLOOR = 0.018;
 
 /**
  * How far the surface is hazed toward its own atmosphere colour at the limb,
@@ -245,10 +258,10 @@ export function useBodyShading(
   cloudShadowMap?: THREE.Texture | null,
   ringShadow?: RingShadow | null
 ): BodyShading {
-  const casters = useMemo(() => occludersOf(id), [id]);
-  const casterRadii = useMemo(() => casters.map(sceneRadiusOf), [casters]);
+  const casters = useMemo(() => solarOccludersFor(id), [id]);
   const drifts = ZONAL_DRIFT[id] !== undefined;
   const hasAerial = !!atmosphereColor;
+  const scientificContrast = useViewSettings((state) => state.mode === 'scientific');
   // Compiled in for any body the registry gives a cloud shell, whether or not
   // its map has loaded yet — the sampler binds the black fallback until it does,
   // so the program never has to recompile when the texture arrives.
@@ -257,9 +270,12 @@ export function useBodyShading(
 
   const uniforms = useMemo(
     () => ({
+      uBodyHeliocentric: { value: new THREE.Vector3() },
+      uBodyRadiusAU: { value: getBodyRecord(id).radiusKm / AU_KM },
       uOccluders: { value: Array.from({ length: MAX_OCCLUDERS }, () => new THREE.Vector4()) },
       uOccluderCount: { value: casters.length },
-      uSunRadius: { value: sceneRadiusOf('sun') },
+      uSunRadiusAU: { value: SUN_RADIUS_KM / AU_KM },
+      uUmbraFloor: { value: CINEMATIC_UMBRA_FLOOR },
       uDriftHours: { value: 0 },
       uZonalRate: { value: ZONAL_DRIFT[id] ?? 0 },
       uAerialColor: { value: new THREE.Color(atmosphereColor ?? '#000000') },
@@ -295,11 +311,25 @@ export function useBodyShading(
   }
 
   useFrame(() => {
-    for (let i = 0; i < casters.length; i++) {
-      const centre = registry.get(casters[i])!;
-      uniforms.uOccluders.value[i].set(centre.x, centre.y, centre.z, casterRadii[i]);
+    const date = useSimTime.getState().date;
+    const illumination = getSolarIllumination(id, date);
+    uniforms.uBodyHeliocentric.value.set(
+      illumination.body.x,
+      illumination.body.y,
+      illumination.body.z
+    );
+    for (let i = 0; i < illumination.occluders.length; i++) {
+      const occluder = illumination.occluders[i];
+      uniforms.uOccluders.value[i].set(
+        occluder.heliocentric.x,
+        occluder.heliocentric.y,
+        occluder.heliocentric.z,
+        occluder.radiusAU
+      );
     }
-    uniforms.uDriftHours.value = (useSimTime.getState().date.getTime() - J2000_MS) / 3600000;
+    uniforms.uOccluderCount.value = illumination.occluders.length;
+    uniforms.uUmbraFloor.value = scientificContrast ? SCIENTIFIC_UMBRA_FLOOR : CINEMATIC_UMBRA_FLOOR;
+    uniforms.uDriftHours.value = (date.getTime() - J2000_MS) / 3600000;
     // The ring plane passes through the planet's centre, which the shadow trace
     // measures the crossing radius from.
     if (hasRingShadow) uniforms.uRingCenter.value.copy(registry.get(id)!);
@@ -343,7 +373,7 @@ export function useBodyShading(
       #ifdef USE_MAP
       {
         vec3 cloudN = normalize( vOrbitimNormal );
-        vec3 cloudSun = normalize( -vOrbitimWorld );
+        vec3 cloudSun = orbitimSunDirectionScene();
         float cloudElev = dot( cloudSun, cloudN );
         if ( cloudElev > 0.02 ) {
           vec3 cloudTangent = normalize( cloudSun - cloudElev * cloudN );
@@ -389,7 +419,7 @@ export function useBodyShading(
     `;
     const RING_FRAGMENT = /* glsl */ `
       {
-        vec3 ringSun = normalize( -vOrbitimWorld );
+        vec3 ringSun = orbitimSunDirectionScene();
         float ringDenom = dot( ringSun, uRingNormal );
         if ( abs( ringDenom ) > 1e-4 ) {
           float ringT = dot( uRingCenter - vOrbitimWorld, uRingNormal ) / ringDenom;
@@ -433,7 +463,7 @@ export function useBodyShading(
             .replace(
               '#include <color_fragment>',
               `#include <color_fragment>
-               diffuseColor.rgb *= mix( ${UMBRA_FLOOR.toFixed(2)}, 1.0, orbitimSunlight() );
+               diffuseColor.rgb *= mix( uUmbraFloor, 1.0, orbitimSunlight() );
                ${hasRingShadow ? RING_FRAGMENT : ''}
                ${hasCloudShadow ? CLOUD_FRAGMENT : ''}
                ${hasAerial ? AERIAL_FRAGMENT : ''}`
@@ -468,7 +498,7 @@ export function useBodyShading(
               '#include <color_fragment>',
               `#include <color_fragment>
                float orbitimDay = smoothstep( -0.14, 0.30, orbitimDaylight() );
-               diffuseColor.rgb *= orbitimDay * mix( ${UMBRA_FLOOR.toFixed(2)}, 1.0, orbitimSunlight() );`
+               diffuseColor.rgb *= orbitimDay * mix( uUmbraFloor, 1.0, orbitimSunlight() );`
             );
         },
         customProgramCacheKey: () => 'orbitim-clouds'
