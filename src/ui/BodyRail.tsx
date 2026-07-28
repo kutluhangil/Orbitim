@@ -112,7 +112,7 @@ export function BodyRail() {
               {moons.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setMoonDockFor(moonDockOpen ? null : id)}
+                  onClick={() => setMoonDockFor(id)}
                   aria-label={t('showMoons', { body: name })}
                   aria-expanded={moonDockOpen}
                   className={`absolute -bottom-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full border px-0.5 font-mono text-[7px] leading-none transition-colors ${

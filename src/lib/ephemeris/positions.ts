@@ -1,6 +1,11 @@
 import { HelioVector, GeoVector, JupiterMoons, Illumination, MakeTime, Body } from 'astronomy-engine';
 import { getBodyRecord, type BodyId } from './bodies';
-import { laplaceMoonDirection, laplaceMoonVectorKm } from './moonElements';
+import {
+  horizonsMoonDirection,
+  horizonsMoonVectorKm,
+  laplaceMoonDirection,
+  laplaceMoonVectorKm
+} from './moonElements';
 import { propagateElements } from './cometOrbit';
 
 /** Right-handed J2000 mean-equator (EQJ) vector, astronomical units. */
@@ -52,6 +57,15 @@ function moonHeliocentric(id: BodyId, date: Date): EquatorialVec {
   if (record.parent === 'jupiter' && (id === 'io' || id === 'europa' || id === 'ganymede' || id === 'callisto')) {
     const moon = JupiterMoons(MakeTime(date))[id];
     return { x: parent.x + moon.x, y: parent.y + moon.y, z: parent.z + moon.z };
+  }
+
+  const horizons = horizonsMoonVectorKm(id, date);
+  if (horizons) {
+    return {
+      x: parent.x + horizons.x / AU_KM,
+      y: parent.y + horizons.y / AU_KM,
+      z: parent.z + horizons.z / AU_KM
+    };
   }
 
   const laplace = laplaceMoonVectorKm(id, date);
@@ -155,7 +169,8 @@ export function getBodyState(id: BodyId, date: Date): BodyState {
  * a full theory for Earth's Moon and the four Galileans, so those return their
  * true instantaneous bearing — the moon genuinely swaps sides of its planet as
  * it does through a telescope. The remaining major moons come from JPL mean
- * elements (see {@link laplaceMoonDirection}); both paths share the EQJ frame.
+ * elements (see {@link laplaceMoonDirection}); new NASA model moons begin from
+ * JPL Horizons state vectors. Both paths share the EQJ frame.
  * Moons with neither source return null and the caller falls back to a mean
  * circular model.
  */
@@ -169,7 +184,7 @@ export function moonDirection(id: BodyId, date: Date): EquatorialVec | null {
     const s = JupiterMoons(MakeTime(date))[id];
     return unit({ x: s.x, y: s.y, z: s.z });
   }
-  return laplaceMoonDirection(id, date);
+  return horizonsMoonDirection(id, date) ?? laplaceMoonDirection(id, date);
 }
 
 function unit(v: EquatorialVec): EquatorialVec {

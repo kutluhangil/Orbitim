@@ -55,6 +55,39 @@ colour was invented.
 
 `enceladus.jpg`, `rhea.jpg` and `iapetus.jpg` are real global mosaics, public
 domain: NASA / JPL / SSI **Cassini** ISS imagery (Iapetus and Rhea filled in
-with **Voyager**), via USGS Astrogeology. Mimas and the Uranian moons have no
-clean global mosaic, so they render as flat shaded spheres rather than an
-invented surface.
+with **Voyager**), via USGS Astrogeology. Mimas and the Uranian moons use the
+published NASA 3D resources documented below rather than an invented procedural
+surface.
+
+## NASA 3D moon models
+
+`../models/mimas.glb`, `../models/titan.glb`, `../models/tethys.glb` and
+`../models/dione.glb` are NASA 3D Resources glTF models credited to **NASA
+Visualization Technology Applications and Development (VTAD)**. Tethys, Dione
+and Mimas are Cassini-image mosaics projected onto the published models; Titan
+uses NASA's supplied moon model. Their render scale is calculated from the
+model bounds against the JPL Horizons mean radii used by the ephemeris.
+
+`../models/phobos.glb` and `../models/deimos.glb` are the NASA/JPL-Caltech
+Mars-moon models. They replace the former stretched spheres, preserving the
+observed non-spherical topography in close view.
+
+`../models/triton.glb`, `../models/titania.glb`, `../models/oberon.glb` and
+`../models/miranda.glb` are the published NASA VTAD models. Triton uses the
+Voyager-era NASA resource; the Uranian satellite models retain their published
+Voyager image coverage instead of synthesising missing global detail.
+
+Original NASA resource pages: [Mimas](https://science.nasa.gov/resource/mimas-3d-model/),
+[Titan](https://science.nasa.gov/resource/titan-3d-model/),
+[Tethys](https://science.nasa.gov/resource/tethys-3d-model/),
+[Dione](https://science.nasa.gov/resource/dione-3d-model/),
+[Phobos](https://science.nasa.gov/resource/phobos-mars-moon-3d-model/),
+[Deimos](https://science.nasa.gov/resource/deimos-mars-moon-3d-model/),
+[Triton](https://science.nasa.gov/resource/triton-3d-model/),
+[Titania](https://science.nasa.gov/resource/titania-3d-model/),
+[Oberon](https://science.nasa.gov/resource/oberon-3d-model/) and
+[Miranda](https://science.nasa.gov/resource/miranda-3d-model/).
+
+Tethys and Dione begin from Saturn-centred J2000 state vectors exported from
+[JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) (sat441l); their scene
+phase is propagated from that measurement, never from a hand-picked longitude.

@@ -22,6 +22,7 @@ import { SolarProminences } from './SolarProminences';
 import { EnceladusPlume } from './EnceladusPlume';
 import { Atmosphere, ATMOSPHERES } from './Atmosphere';
 import { SurfaceSites } from './SurfaceSites';
+import { NasaMoonModel } from './NasaMoonModel';
 import { getExploration } from '../data/missions';
 import { localizedBodyName, useTranslation } from '../ui/i18n';
 
@@ -62,7 +63,7 @@ const MARS_MOLA_MAX_KM = 21.181;
 export function Body({ id, registry, onSelect }: BodyProps) {
   const record = getBodyRecord(id);
   const group = useRef<THREE.Group>(null);
-  const surface = useRef<THREE.Mesh>(null);
+  const surface = useRef<THREE.Group>(null);
   const clouds = useRef<THREE.Mesh>(null);
   const pole = useMemo(() => new THREE.Vector3(), []);
   const north = useMemo(() => new THREE.Vector3(0, 1, 0), []);
@@ -147,9 +148,8 @@ export function Body({ id, registry, onSelect }: BodyProps) {
 
   return (
     <group ref={group}>
-      <mesh
+      <group
         ref={surface}
-        scale={shapeScale}
         onClick={(event) => {
           event.stopPropagation();
           onSelect(id);
@@ -163,39 +163,45 @@ export function Body({ id, registry, onSelect }: BodyProps) {
           document.body.style.cursor = '';
         }}
       >
-        <sphereGeometry args={[radius, SEGMENTS[lod], SEGMENTS[lod] / 2]} />
-        {isStar ? (
-          <SunSurface map={textures.map} />
+        {record.nasaModelUrl ? (
+          <NasaMoonModel url={record.nasaModelUrl} radius={radius} />
         ) : (
-          <meshStandardMaterial
-            key={`${textures.map?.uuid ?? 'flat'}-${textures.emissiveMap?.uuid ?? 'none'}-${textures.roughnessMap?.uuid ?? 'rough'}-${textures.heightMap?.uuid ?? 'flat'}`}
-            map={textures.map ?? undefined}
-            /* The registry colour is the fallback for a body with neither a
-               published map nor a generated surface; anything that supplies its
-               own albedo must not be tinted by it a second time. */
-            color={textures.map || relief ? '#ffffff' : record.color}
-            emissiveMap={textures.emissiveMap ?? undefined}
-            emissive={textures.emissiveMap ? new THREE.Color('#ffcf87') : new THREE.Color('#000000')}
-            /* Confined to the night side by the shading patch, the lights can
-               carry their real brightness instead of the dim average that kept
-               them from washing out the daylit hemisphere. */
-            emissiveIntensity={textures.emissiveMap ? 1.25 : 0}
-            /* Where a roughness map is supplied it carries the absolute value —
-               low over ocean for the sun-glint, matte over land — so the scalar
-               passes it through untouched. Everything else keeps the flat matte. */
-            roughnessMap={textures.roughnessMap ?? undefined}
-            roughness={textures.roughnessMap ? 1 : (SURFACE_ROUGHNESS[id] ?? 0.92)}
-            displacementMap={textures.heightMap ?? undefined}
-            displacementScale={displacementScale}
-            displacementBias={displacementBias}
-            metalness={0}
-            onBeforeCompile={surfaceMaterial.onBeforeCompile}
-            customProgramCacheKey={surfaceMaterial.customProgramCacheKey}
-          />
-        )}
+          <mesh scale={shapeScale}>
+            <sphereGeometry args={[radius, SEGMENTS[lod], SEGMENTS[lod] / 2]} />
+            {isStar ? (
+              <SunSurface map={textures.map} />
+            ) : (
+              <meshStandardMaterial
+                key={`${textures.map?.uuid ?? 'flat'}-${textures.emissiveMap?.uuid ?? 'none'}-${textures.roughnessMap?.uuid ?? 'rough'}-${textures.heightMap?.uuid ?? 'flat'}`}
+                map={textures.map ?? undefined}
+                /* The registry colour is the fallback for a body with neither a
+                   published map nor a generated surface; anything that supplies its
+                   own albedo must not be tinted by it a second time. */
+                color={textures.map || relief ? '#ffffff' : record.color}
+                emissiveMap={textures.emissiveMap ?? undefined}
+                emissive={textures.emissiveMap ? new THREE.Color('#ffcf87') : new THREE.Color('#000000')}
+                /* Confined to the night side by the shading patch, the lights can
+                   carry their real brightness instead of the dim average that kept
+                   them from washing out the daylit hemisphere. */
+                emissiveIntensity={textures.emissiveMap ? 1.25 : 0}
+                /* Where a roughness map is supplied it carries the absolute value —
+                   low over ocean for the sun-glint, matte over land — so the scalar
+                   passes it through untouched. Everything else keeps the flat matte. */
+                roughnessMap={textures.roughnessMap ?? undefined}
+                roughness={textures.roughnessMap ? 1 : (SURFACE_ROUGHNESS[id] ?? 0.92)}
+                displacementMap={textures.heightMap ?? undefined}
+                displacementScale={displacementScale}
+                displacementBias={displacementBias}
+                metalness={0}
+                onBeforeCompile={surfaceMaterial.onBeforeCompile}
+                customProgramCacheKey={surfaceMaterial.customProgramCacheKey}
+              />
+            )}
 
-        {isStar && <SolarProminences radius={radius} />}
-        {id === 'enceladus' && <EnceladusPlume radius={radius} />}
+            {isStar && <SolarProminences radius={radius} />}
+            {id === 'enceladus' && <EnceladusPlume radius={radius} />}
+          </mesh>
+        )}
 
         {/* Children of the surface, so the sites turn with the ground they are
             on. Only drawn for the body the camera has arrived at: from the
@@ -203,7 +209,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
         {sites.length > 0 && phase === 'orbiting' && target === id && (
           <SurfaceSites sites={sites} radius={radius} />
         )}
-      </mesh>
+      </group>
 
       {revealed && (
         <Html center zIndexRange={[15, 5]} style={{ pointerEvents: 'none' }}>

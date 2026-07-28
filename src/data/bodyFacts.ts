@@ -273,6 +273,28 @@ export const BODY_FACTS: Record<BodyId, BodyFacts> = {
     atmosphere: 'Tenuous water vapour from the plumes',
     activeMissions: ['None. Studied by Cassini 2004–2017']
   },
+  tethys: {
+    tagline: 'An ice-rich Saturnian moon dominated by the Odysseus impact basin and Ithaca Chasma.',
+    massKg: '6.176 × 10^20 kg',
+    gravity: '0.145 m/s²',
+    meanTemp: '−187 °C',
+    dayLength: '45.3 hours, tidally locked',
+    yearLength: '1.888 days around Saturn',
+    moons: null,
+    atmosphere: 'None',
+    activeMissions: ['None. Studied by Cassini 2004–2017']
+  },
+  dione: {
+    tagline: 'An icy Saturnian moon marked by bright wispy terrain and tectonic fractures.',
+    massKg: '1.096 × 10^21 kg',
+    gravity: '0.232 m/s²',
+    meanTemp: '−186 °C',
+    dayLength: '65.7 hours, tidally locked',
+    yearLength: '2.737 days around Saturn',
+    moons: null,
+    atmosphere: 'Trace oxygen',
+    activeMissions: ['None. Studied by Cassini 2004–2017']
+  },
   rhea: {
     tagline: 'Saturn’s second-largest moon, an ancient cratered ball of ice.',
     massKg: '2.31 × 10^21 kg',

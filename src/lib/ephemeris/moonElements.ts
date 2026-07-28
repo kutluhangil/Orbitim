@@ -12,9 +12,9 @@ import type { BodyId } from './bodies';
  * (ssd.jpl.nasa.gov/sats/elem), epoch 2000-Jan-1.5 TDB, each referred to the
  * moon's local Laplace plane. Propagating the mean anomaly from the epoch and
  * rotating the Laplace-plane orbit into the J2000 mean equator (EQJ) — the same
- * frame astronomy-engine's vectors use — puts every moon on its true
- * instantaneous bearing: it swaps sides of its planet exactly as it does
- * through a telescope, and agrees with the Galileans' shipped theory in kind.
+ * frame astronomy-engine's vectors use — puts every moon on a source-backed
+ * bearing. Tethys and Dione keep their own JPL Horizons epoch state so they
+ * never begin from an arbitrary longitude.
  *
  * Accuracy is arc-minute class near the epoch, degrading by a fraction of a
  * degree per decade as the neglected short-period terms accumulate. Against the
@@ -91,6 +91,30 @@ interface Vec3 {
   z: number;
 }
 
+interface HorizonsSeed {
+  positionKm: Vec3;
+  velocityKmPerSec: Vec3;
+  periodDays: number;
+}
+
+/**
+ * Geometric J2000 state vectors from JPL Horizons (sat441l), centered on
+ * Saturn at 2000-Jan-01 12:00 TDB. A circular propagation keeps that observed
+ * phase and orbital plane between full external ephemeris refreshes.
+ */
+const HORIZONS_SEEDS: Partial<Record<BodyId, HorizonsSeed>> = {
+  tethys: {
+    positionKm: { x: 217033.7614667597, y: -199135.8387922731, z: -9396.03083113896 },
+    velocityKmPerSec: { x: 7.600784783756903, y: 8.343467080564723, z: -1.204113666047753 },
+    periodDays: 1.888
+  },
+  dione: {
+    positionKm: { x: 228548.6335990705, y: -299408.2715142818, z: 2227.807713695493 },
+    velocityKmPerSec: { x: 7.931813887454402, y: 6.063601423278839, z: -1.13111320429424 },
+    periodDays: 2.736915
+  }
+};
+
 const DEG = Math.PI / 180;
 /** 2000-Jan-1.5 (JD 2451545.0), the element epoch. TT/UTC offset is left out. */
 const EPOCH_MS = Date.UTC(2000, 0, 1, 12, 0, 0);
@@ -115,6 +139,37 @@ function eccentricAnomaly(meanAnomaly: number, e: number): number {
 export function laplaceMoonDirection(id: BodyId, date: Date): Vec3 | null {
   const vector = laplaceMoonVectorKm(id, date);
   return vector ? normalize(vector) : null;
+}
+
+/** Source-backed phase and inertial orbital plane for newly added NASA models. */
+export function horizonsMoonDirection(id: BodyId, date: Date): Vec3 | null {
+  const vector = horizonsMoonVectorKm(id, date);
+  return vector ? normalize(vector) : null;
+}
+
+/**
+ * Propagates the Horizons epoch state through its published sidereal period.
+ * The tiny eccentricities of Tethys (0.0001) and Dione (0.0022) are below the
+ * visual error floor at the scene's compressed orbit scale, while the phase is
+ * anchored to the published geometric state rather than a made-up longitude.
+ */
+export function horizonsMoonVectorKm(id: BodyId, date: Date): Vec3 | null {
+  const seed = HORIZONS_SEEDS[id];
+  if (!seed) return null;
+
+  const radial = normalize(seed.positionKm);
+  const normal = normalize(cross(seed.positionKm, seed.velocityKmPerSec));
+  const tangent = normalize(cross(normal, radial));
+  const phase = ((date.getTime() - EPOCH_MS) / 86400000 / seed.periodDays) * 2 * Math.PI;
+  const distance = Math.hypot(seed.positionKm.x, seed.positionKm.y, seed.positionKm.z);
+  const cosine = Math.cos(phase);
+  const sine = Math.sin(phase);
+
+  return {
+    x: distance * (radial.x * cosine + tangent.x * sine),
+    y: distance * (radial.y * cosine + tangent.y * sine),
+    z: distance * (radial.z * cosine + tangent.z * sine)
+  };
 }
 
 /**

@@ -7,7 +7,7 @@ export type BodyId =
   | 'ceres' | 'pluto'
   | 'moon' | 'io' | 'europa' | 'ganymede' | 'callisto'
   | 'titan' | 'phobos' | 'deimos' | 'triton' | 'charon'
-  | 'mimas' | 'enceladus' | 'rhea' | 'iapetus'
+  | 'mimas' | 'enceladus' | 'tethys' | 'dione' | 'rhea' | 'iapetus'
   | 'titania' | 'oberon' | 'miranda';
 
 /** A dwarf planet renders as a full world but is not one of the eight planets. */
@@ -39,6 +39,8 @@ export interface BodyRecord {
   orbitInclinationDeg?: number;
   /** ring system inner/outer radius in body radii */
   rings?: { innerRadii: number; outerRadii: number };
+  /** NASA 3D Resources model, stored locally so the visual never depends on a third-party runtime request. */
+  nasaModelUrl?: string;
   /**
    * Osculating heliocentric elements for element-propagated worlds — those with
    * no astronomy-engine theory and no parent (e.g. Ceres). Ignored when
@@ -81,22 +83,24 @@ const RECORDS: BodyRecord[] = [
   { id: 'europa', name: 'Europa', kind: 'moon', engineBody: null, parent: 'jupiter', radiusKm: 1560.8, axialTiltDeg: 0, rotationHours: 85.22, orbitRadiusKm: 671100, orbitDays: 3.551, orbitInclinationDeg: 0.47, color: '#d8cbb0' },
   { id: 'ganymede', name: 'Ganymede', kind: 'moon', engineBody: null, parent: 'jupiter', radiusKm: 2634.1, axialTiltDeg: 0, rotationHours: 171.7, orbitRadiusKm: 1070400, orbitDays: 7.155, orbitInclinationDeg: 0.2, color: '#a89f92' },
   { id: 'callisto', name: 'Callisto', kind: 'moon', engineBody: null, parent: 'jupiter', radiusKm: 2410.3, axialTiltDeg: 0, rotationHours: 400.5, orbitRadiusKm: 1882700, orbitDays: 16.689, orbitInclinationDeg: 0.19, color: '#7a6f63' },
-  { id: 'titan', name: 'Titan', kind: 'moon', engineBody: null, parent: 'saturn', radiusKm: 2574.7, axialTiltDeg: 0, rotationHours: 382.7, orbitRadiusKm: 1221870, orbitDays: 15.945, orbitInclinationDeg: 0.33, color: '#e0a95c' },
+  { id: 'titan', name: 'Titan', kind: 'moon', engineBody: null, parent: 'saturn', radiusKm: 2574.7, axialTiltDeg: 0, rotationHours: 382.7, orbitRadiusKm: 1221870, orbitDays: 15.945, orbitInclinationDeg: 0.33, nasaModelUrl: '/models/titan.glb', color: '#e0a95c' },
   // NASA's measured full axes make the Martian moons visibly lumpy; a sphere
   // would overstate both their symmetry and their apparent eclipse silhouettes.
-  { id: 'phobos', name: 'Phobos', kind: 'moon', engineBody: null, parent: 'mars', radiusKm: 11.27, shapeAxesKm: [27, 22, 18], axialTiltDeg: 0, rotationHours: 7.65, orbitRadiusKm: 9376, orbitDays: 0.3189, orbitInclinationDeg: 1.08, color: '#8a7f74' },
-  { id: 'deimos', name: 'Deimos', kind: 'moon', engineBody: null, parent: 'mars', radiusKm: 6.2, shapeAxesKm: [15, 12, 11], axialTiltDeg: 0, rotationHours: 30.31, orbitRadiusKm: 23463, orbitDays: 1.2624, orbitInclinationDeg: 1.79, color: '#9a8f84' },
-  { id: 'triton', name: 'Triton', kind: 'moon', engineBody: null, parent: 'neptune', radiusKm: 1353.4, axialTiltDeg: 0, rotationHours: -141.0, orbitRadiusKm: 354759, orbitDays: -5.877, orbitInclinationDeg: 156.9, color: '#c9d6d6' },
+  { id: 'phobos', name: 'Phobos', kind: 'moon', engineBody: null, parent: 'mars', radiusKm: 11.27, shapeAxesKm: [27, 22, 18], axialTiltDeg: 0, rotationHours: 7.65, orbitRadiusKm: 9376, orbitDays: 0.3189, orbitInclinationDeg: 1.08, nasaModelUrl: '/models/phobos.glb', color: '#8a7f74' },
+  { id: 'deimos', name: 'Deimos', kind: 'moon', engineBody: null, parent: 'mars', radiusKm: 6.2, shapeAxesKm: [15, 12, 11], axialTiltDeg: 0, rotationHours: 30.31, orbitRadiusKm: 23463, orbitDays: 1.2624, orbitInclinationDeg: 1.79, nasaModelUrl: '/models/deimos.glb', color: '#9a8f84' },
+  { id: 'triton', name: 'Triton', kind: 'moon', engineBody: null, parent: 'neptune', radiusKm: 1353.4, axialTiltDeg: 0, rotationHours: -141.0, orbitRadiusKm: 354759, orbitDays: -5.877, orbitInclinationDeg: 156.9, nasaModelUrl: '/models/triton.glb', color: '#c9d6d6' },
   { id: 'charon', name: 'Charon', kind: 'moon', engineBody: null, parent: 'pluto', radiusKm: 606, axialTiltDeg: 0, rotationHours: -153.2928, orbitRadiusKm: 19596, orbitDays: 6.3872, orbitInclinationDeg: 0.08, color: '#b7afa4' },
 
-  { id: 'mimas', name: 'Mimas', kind: 'moon', engineBody: null, parent: 'saturn', radiusKm: 198.2, axialTiltDeg: 0, rotationHours: 22.618, orbitRadiusKm: 185540, orbitDays: 0.9424, orbitInclinationDeg: 1.57, color: '#c8c8cc' },
+  { id: 'mimas', name: 'Mimas', kind: 'moon', engineBody: null, parent: 'saturn', radiusKm: 198.2, axialTiltDeg: 0, rotationHours: 22.618, orbitRadiusKm: 185540, orbitDays: 0.9424, orbitInclinationDeg: 1.57, nasaModelUrl: '/models/mimas.glb', color: '#c8c8cc' },
   { id: 'enceladus', name: 'Enceladus', kind: 'moon', engineBody: null, parent: 'saturn', radiusKm: 252.1, axialTiltDeg: 0, rotationHours: 32.885, orbitRadiusKm: 238040, orbitDays: 1.3702, orbitInclinationDeg: 0.01, color: '#eef4f5' },
+  { id: 'tethys', name: 'Tethys', kind: 'moon', engineBody: null, parent: 'saturn', radiusKm: 536.3, axialTiltDeg: 0, rotationHours: 45.312, orbitRadiusKm: 294670, orbitDays: 1.8878, orbitInclinationDeg: 1.091, nasaModelUrl: '/models/tethys.glb', color: '#d8d6d1' },
+  { id: 'dione', name: 'Dione', kind: 'moon', engineBody: null, parent: 'saturn', radiusKm: 562.5, axialTiltDeg: 0, rotationHours: 65.686, orbitRadiusKm: 377420, orbitDays: 2.736915, orbitInclinationDeg: 0.028, nasaModelUrl: '/models/dione.glb', color: '#c7c5c1' },
   { id: 'rhea', name: 'Rhea', kind: 'moon', engineBody: null, parent: 'saturn', radiusKm: 763.8, axialTiltDeg: 0, rotationHours: 108.437, orbitRadiusKm: 527110, orbitDays: 4.5182, orbitInclinationDeg: 0.32, color: '#c4c2be' },
   { id: 'iapetus', name: 'Iapetus', kind: 'moon', engineBody: null, parent: 'saturn', radiusKm: 734.5, axialTiltDeg: 0, rotationHours: 1903.7, orbitRadiusKm: 3560840, orbitDays: 79.3215, orbitInclinationDeg: 15.47, color: '#9a8a72' },
 
-  { id: 'titania', name: 'Titania', kind: 'moon', engineBody: null, parent: 'uranus', radiusKm: 788.4, axialTiltDeg: 0, rotationHours: 208.941, orbitRadiusKm: 436300, orbitDays: 8.7059, orbitInclinationDeg: 0.34, color: '#a9a29a' },
-  { id: 'oberon', name: 'Oberon', kind: 'moon', engineBody: null, parent: 'uranus', radiusKm: 761.4, axialTiltDeg: 0, rotationHours: 323.118, orbitRadiusKm: 583500, orbitDays: 13.4632, orbitInclinationDeg: 0.1, color: '#9c948c' },
-  { id: 'miranda', name: 'Miranda', kind: 'moon', engineBody: null, parent: 'uranus', radiusKm: 235.8, axialTiltDeg: 0, rotationHours: 33.923, orbitRadiusKm: 129900, orbitDays: 1.4135, orbitInclinationDeg: 4.34, color: '#a8a8ac' }
+  { id: 'titania', name: 'Titania', kind: 'moon', engineBody: null, parent: 'uranus', radiusKm: 788.4, axialTiltDeg: 0, rotationHours: 208.941, orbitRadiusKm: 436300, orbitDays: 8.7059, orbitInclinationDeg: 0.34, nasaModelUrl: '/models/titania.glb', color: '#a9a29a' },
+  { id: 'oberon', name: 'Oberon', kind: 'moon', engineBody: null, parent: 'uranus', radiusKm: 761.4, axialTiltDeg: 0, rotationHours: 323.118, orbitRadiusKm: 583500, orbitDays: 13.4632, orbitInclinationDeg: 0.1, nasaModelUrl: '/models/oberon.glb', color: '#9c948c' },
+  { id: 'miranda', name: 'Miranda', kind: 'moon', engineBody: null, parent: 'uranus', radiusKm: 235.8, axialTiltDeg: 0, rotationHours: 33.923, orbitRadiusKm: 129900, orbitDays: 1.4135, nasaModelUrl: '/models/miranda.glb', color: '#a8a8ac' }
 ];
 
 const BY_ID = new Map<BodyId, BodyRecord>(RECORDS.map((r) => [r.id, r]));
