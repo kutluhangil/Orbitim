@@ -8,6 +8,7 @@ import { useSimTime } from '../scene/useSimTime';
 import { useViewSettings } from '../scene/viewSettings';
 import { tleHealthLabel } from '../lib/dataHealth';
 import { findNextStarlinkRises, type StarlinkRise } from '../lib/ephemeris/starlinkPasses';
+import { useIsCompact } from './useMediaQuery';
 
 function formatAngle(value: number): string {
   const sign = value > 0 ? '+' : '';
@@ -52,6 +53,8 @@ export function ObserverPanel() {
   const stationsHealth = useSatelliteGroups((state) => state.health.stations);
   const starlink = useSatelliteGroups((state) => state.sets.starlink);
   const starlinkHealth = useSatelliteGroups((state) => state.health.starlink);
+  const compact = useIsCompact();
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     void load('stations').catch((cause) => {
@@ -110,11 +113,8 @@ export function ObserverPanel() {
     }
   };
 
-  return (
-    <aside
-      aria-label="Observer sky"
-      className={`pointer-events-auto fixed left-6 top-6 z-10 hidden w-64 rounded-2xl border p-5 backdrop-blur-xl lg:block ${surface}`}
-    >
+  const panelContent = (
+    <>
       <header className="flex items-start justify-between gap-3">
         <div>
           <h2 className={`text-[10px] uppercase tracking-[0.28em] ${light ? 'text-sky-600/80' : 'text-sky-300/70'}`}>
@@ -209,6 +209,52 @@ export function ObserverPanel() {
           </>
         )}
       </div>
+    </>
+  );
+
+  if (compact) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          aria-controls="observer-sheet"
+          className={`pointer-events-auto fixed left-3 top-[calc(env(safe-area-inset-top)+3.75rem)] z-30 flex h-10 items-center gap-2 rounded-full border px-3.5 text-[10px] uppercase tracking-[0.2em] backdrop-blur-xl ${light ? 'border-slate-300 bg-white/80 text-slate-600' : 'border-white/10 bg-black/70 text-white/70'}`}
+        >
+          <Crosshair className="h-3.5 w-3.5" aria-hidden />
+          Sky
+          <span className={`h-1.5 w-1.5 rounded-full ${visible.length > 0 ? 'bg-sky-300' : 'bg-white/25'}`} aria-hidden />
+        </button>
+
+        {open && (
+          <section
+            id="observer-sheet"
+            aria-label="Observer sky"
+            className={`pointer-events-auto fixed inset-x-0 bottom-[var(--time-bar)] z-40 max-h-[70dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t p-5 backdrop-blur-xl ${surface}`}
+          >
+            <div className="mb-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className={`text-[10px] uppercase tracking-[0.2em] ${light ? 'text-sky-700' : 'text-sky-200/80'}`}
+              >
+                Close
+              </button>
+            </div>
+            {panelContent}
+          </section>
+        )}
+      </>
+    );
+  }
+
+  return (
+    <aside
+      aria-label="Observer sky"
+      className={`pointer-events-auto fixed left-6 top-6 z-10 hidden w-64 rounded-2xl border p-5 backdrop-blur-xl lg:block ${surface}`}
+    >
+      {panelContent}
     </aside>
   );
 }
