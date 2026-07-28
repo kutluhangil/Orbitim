@@ -26,6 +26,10 @@ const MARKER_RADII = 0.011;
 const LABEL_OFFSET_X = 13;
 const LABEL_HEIGHT = 18;
 const LABEL_WIDTH = 118;
+const CARD_GAP = 18;
+const CARD_VIEWPORT_MARGIN = 16;
+const DESKTOP_PANEL_WIDTH = 384;
+const COMPACT_DOCK_CLEARANCE = 168;
 /** Slots a crowded label may be moved into, nearest first and alternating side. */
 const SLOTS = [0, -1, 1, -2, 2, -3, 3];
 /**
@@ -55,6 +59,32 @@ function siteToLocal(site: SurfaceSite, radius: number): THREE.Vector3 {
   );
 }
 
+const SITE_KIND_LABELS: Record<SiteKind, string> = {
+  crewed: 'Crewed landing',
+  landing: 'Landing',
+  rover: 'Rover',
+  'sample-return': 'Sample return',
+  impact: 'Impact',
+  launch: 'Launch site'
+};
+
+/** The date the site was reached, read in UTC so it never shifts locally. */
+function formatSiteDate(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  });
+}
+
+/** Signed latitude and longitude in the hemisphere form used on mission maps. */
+function formatCoordinates(site: SurfaceSite): string {
+  const lat = `${Math.abs(site.lat).toFixed(2)}° ${site.lat >= 0 ? 'N' : 'S'}`;
+  const lon = `${Math.abs(site.lon).toFixed(2)}° ${site.lon >= 0 ? 'E' : 'W'}`;
+  return `${lat}, ${lon}`;
+}
+
 /**
  * Where spacecraft have actually come down, marked on the ground they came down
  * on.
@@ -70,6 +100,7 @@ export function SurfaceSites({ sites, radius }: SurfaceSitesProps) {
   const group = useRef<THREE.Group>(null);
   const nodes = useRef(new Map<string, HTMLButtonElement | null>());
   const leaders = useRef(new Map<string, SVGLineElement | null>());
+  const detail = useRef<HTMLDivElement>(null);
   const { camera, size } = useThree();
 
   const selected = useSiteSelection((s) => s.selected);
@@ -79,6 +110,10 @@ export function SurfaceSites({ sites, radius }: SurfaceSitesProps) {
   const positions = useMemo(
     () => new Map(sites.map((site) => [site.id, siteToLocal(site, radius)])),
     [sites, radius]
+  );
+  const selectedSite = useMemo(
+    () => sites.find((site) => site.id === selected) ?? null,
+    [sites, selected]
   );
 
   // Leaving the body takes its sites with it; a dossier for a landing site on a
@@ -155,6 +190,45 @@ export function SurfaceSites({ sites, radius }: SurfaceSitesProps) {
       leader.setAttribute('x2', String(anchorX));
       leader.setAttribute('y2', String(y));
     }
+
+    const card = detail.current;
+    if (!card) return;
+    const selectedCandidate = candidates.find((candidate) => candidate.id === selected);
+    if (!selectedCandidate?.visible) {
+      card.style.opacity = '0';
+      card.style.pointerEvents = 'none';
+      return;
+    }
+
+    const cardWidth = card.offsetWidth || 288;
+    const cardHeight = card.offsetHeight || 224;
+    const isDesktop = size.width >= 768;
+    const rightLimit =
+      size.width -
+      CARD_VIEWPORT_MARGIN -
+      (isDesktop ? DESKTOP_PANEL_WIDTH : 0) -
+      cardWidth;
+    const preferredRight =
+      selectedCandidate.x + LABEL_OFFSET_X + LABEL_WIDTH + CARD_GAP;
+    const preferredLeft = selectedCandidate.x - cardWidth - CARD_GAP;
+    const cardX =
+      preferredRight <= rightLimit
+        ? preferredRight
+        : THREE.MathUtils.clamp(
+            preferredLeft,
+            CARD_VIEWPORT_MARGIN,
+            Math.max(CARD_VIEWPORT_MARGIN, rightLimit)
+          );
+    const bottomClearance = isDesktop ? CARD_VIEWPORT_MARGIN : COMPACT_DOCK_CLEARANCE;
+    const cardY = THREE.MathUtils.clamp(
+      selectedCandidate.y - cardHeight / 2,
+      CARD_VIEWPORT_MARGIN,
+      Math.max(CARD_VIEWPORT_MARGIN, size.height - bottomClearance - cardHeight)
+    );
+
+    card.style.opacity = '1';
+    card.style.pointerEvents = 'auto';
+    card.style.transform = `translate(${cardX}px, ${cardY}px)`;
   });
 
   return (
@@ -221,6 +295,63 @@ export function SurfaceSites({ sites, radius }: SurfaceSitesProps) {
               {site.name}
             </button>
           ))}
+
+          {selectedSite && (
+            <div
+              ref={detail}
+              role="dialog"
+              aria-modal="false"
+              aria-label={`${selectedSite.name} exploration details`}
+              style={{ opacity: 0, borderColor: `${KIND_COLORS[selectedSite.kind]}55` }}
+              className="pointer-events-none absolute left-0 top-0 w-72 max-w-[calc(100vw-1.5rem)] rounded-2xl border bg-black/85 p-4 text-left text-white shadow-2xl shadow-black/60 backdrop-blur-xl transition-opacity duration-200"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[9px] uppercase tracking-[0.24em] text-white/35">
+                    Exploration
+                  </p>
+                  <h3 className="mt-1 truncate text-[17px] font-light tracking-tight">
+                    {selectedSite.name}
+                  </h3>
+                  <p
+                    className="mt-1 text-[9px] uppercase tracking-[0.18em]"
+                    style={{ color: KIND_COLORS[selectedSite.kind] }}
+                  >
+                    {SITE_KIND_LABELS[selectedSite.kind]} · {selectedSite.agency}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clear}
+                  aria-label={`Close ${selectedSite.name} details`}
+                  className="-mr-1 -mt-1 shrink-0 rounded-full border border-white/10 px-2 py-1 text-[9px] uppercase tracking-[0.16em] text-white/45 transition-colors hover:border-white/25 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-300"
+                >
+                  Close
+                </button>
+              </div>
+
+              <p className="mt-3 text-[11px] leading-relaxed text-white/65">
+                {selectedSite.summary}
+              </p>
+
+              <dl className="mt-3 border-t border-white/10 pt-2">
+                <div className="flex items-start justify-between gap-4 py-1">
+                  <dt className="text-[9px] uppercase tracking-[0.18em] text-white/30">Date</dt>
+                  <dd className="text-right text-[10px] text-white/65">
+                    {formatSiteDate(selectedSite.date)}
+                  </dd>
+                </div>
+                <div className="flex items-start justify-between gap-4 py-1">
+                  <dt className="text-[9px] uppercase tracking-[0.18em] text-white/30">
+                    Coordinates
+                  </dt>
+                  <dd className="text-right font-mono text-[10px] tabular-nums text-white/65">
+                    {formatCoordinates(selectedSite)}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          )}
         </div>
       </Html>
     </group>

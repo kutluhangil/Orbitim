@@ -3,7 +3,7 @@ import type { SurfaceSite } from '../data/missions';
 import { useSatelliteSelection } from './satelliteSelection';
 
 interface SiteSelectionState {
-  /** Id of the site whose dossier the info panel is showing, if any. */
+  /** Id of the site whose surface-anchored dossier is showing, if any. */
   selected: string | null;
   select: (site: SurfaceSite) => void;
   clear: () => void;
@@ -17,8 +17,8 @@ interface SiteSelectionState {
 export const useSiteSelection = create<SiteSelectionState>((set) => ({
   selected: null,
   select: (site) => {
-    // A satellite and a landing site are read in the same panel, so picking one
-    // has to let go of the other.
+    // Satellite and surface dossiers occupy the same visual focus layer, so
+    // picking one has to let go of the other.
     useSatelliteSelection.getState().clear();
     set({ selected: site.id });
   },
