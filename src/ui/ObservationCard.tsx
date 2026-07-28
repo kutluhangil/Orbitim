@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchEarthObservation, fetchSolarObservation, type EarthObservation, type SolarObservation } from '../services/observations';
 import { DataProvenanceBadge } from './DataProvenanceBadge';
+import { useTranslation } from './i18n';
 
 type ObservationTarget = 'earth' | 'sun';
 type Observation = EarthObservation | SolarObservation;
@@ -22,6 +23,7 @@ export function ObservationCard({ target }: { target: ObservationTarget }) {
   const [observation, setObservation] = useState<Observation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -46,20 +48,20 @@ export function ObservationCard({ target }: { target: ObservationTarget }) {
     return () => controller.abort();
   }, [load]);
 
-  const title = target === 'earth' ? 'Earth observation' : 'Solar observation';
+  const title = target === 'earth' ? t('earthObservation') : t('solarObservation');
 
   return (
     <section className="mb-5 border-y border-sky-300/10 py-4" aria-busy={loading}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-[10px] uppercase tracking-[0.22em] text-sky-200/70">{title}</h3>
-          <p className="mt-1 text-[10px] leading-relaxed text-white/40">Source image; not mapped onto this simulation.</p>
+          <p className="mt-1 text-[10px] leading-relaxed text-white/40">{t('sourceImage')}</p>
         </div>
-        <DataProvenanceBadge kind={error ? 'unavailable' : 'observed'}>{error ? 'Unavailable' : 'Observed'}</DataProvenanceBadge>
+        <DataProvenanceBadge kind={error ? 'unavailable' : 'observed'}>{error ? t('unavailable') : t('observed')}</DataProvenanceBadge>
       </div>
 
       {error ? (
-        <p className="mt-3 text-[11px] leading-relaxed text-rose-200/90">NASA source unavailable: {error}</p>
+        <p className="mt-3 text-[11px] leading-relaxed text-rose-200/90">{t('nasaUnavailable', { error })}</p>
       ) : observation ? (
         <div className="mt-3 overflow-hidden rounded-xl border border-white/10 bg-black/25">
           <a href={observation.sourceUrl} target="_blank" rel="noreferrer" className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
@@ -68,17 +70,17 @@ export function ObservationCard({ target }: { target: ObservationTarget }) {
           <div className="space-y-1.5 px-3 py-3">
             <p className="text-[11px] text-white/80">{observation.source}</p>
             {isEarth(observation) ? (
-              <p className="text-[10px] tabular-nums text-white/45">Observed {formatUtc(observation.observedAt)}</p>
+              <p className="text-[10px] tabular-nums text-white/45">{t('observed')} {formatUtc(observation.observedAt)}</p>
             ) : (
               <>
-                <p className="text-[10px] tabular-nums text-white/45">Asset updated {formatUtc(observation.publishedAt)}</p>
+                <p className="text-[10px] tabular-nums text-white/45">{t('assetUpdated')} {formatUtc(observation.publishedAt)}</p>
                 <p className="text-[10px] leading-relaxed text-white/35">{observation.timestampNote}</p>
               </>
             )}
           </div>
         </div>
       ) : (
-        <p className="mt-3 text-[11px] text-white/45">Loading the NASA source image…</p>
+        <p className="mt-3 text-[11px] text-white/45">{t('loadingNasaImage')}</p>
       )}
     </section>
   );

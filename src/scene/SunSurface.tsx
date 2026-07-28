@@ -137,8 +137,12 @@ const FRAGMENT = /* glsl */ `
     vec3 viewDirection = normalize(-vPositionView);
     float mu = clamp(dot(normal, viewDirection), 0.0, 1.0);
     color *= mix(0.42, 1.08, pow(mu, 0.55));
-    color += vec3(1.0, 0.72, 0.35) * pow(1.0 - mu, 5.0) * mix(0.55, 0.82, uActivity);
-    color *= 1.08;
+    color += vec3(1.0, 0.72, 0.35) * pow(1.0 - mu, 5.0) * mix(0.62, 0.94, uActivity);
+
+    // The Sun is the scene's one emitter, so it is carried into the HDR buffer
+    // brighter than a reflective body. Bloom receives this real luminance while
+    // the local heat and granulation above keep the disc legible at close range.
+    color *= mix(1.72, 2.16, uActivity);
 
     gl_FragColor = vec4(color, 1.0);
   }
@@ -146,8 +150,8 @@ const FRAGMENT = /* glsl */ `
 
 /**
  * Animated photosphere material. The corona and post-process bloom carry its
- * glare; the photosphere stays tone-mapped so active regions remain structured
- * instead of clipping into isolated white patches.
+ * glare; HDR output keeps the physical emitter bright enough for bloom while
+ * the shader's local contrast keeps active regions structured.
  */
 export function SunSurface({ map }: { map: THREE.Texture | null }) {
   const material = useRef<THREE.ShaderMaterial>(null);
@@ -196,7 +200,7 @@ export function SunSurface({ map }: { map: THREE.Texture | null }) {
       uniforms={uniforms}
       vertexShader={VERTEX}
       fragmentShader={FRAGMENT}
-      toneMapped
+      toneMapped={false}
     />
   );
 }

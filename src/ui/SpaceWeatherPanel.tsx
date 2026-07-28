@@ -4,6 +4,7 @@ import { useFlight } from '../flight/useFlight';
 import { fetchSpaceWeather, type SpaceWeatherSnapshot } from '../services/nasaDonki';
 import { useSolarActivity } from '../scene/solarActivity';
 import { useViewSettings } from '../scene/viewSettings';
+import { useTranslation } from './i18n';
 
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
@@ -51,6 +52,7 @@ export function SpaceWeatherPanel() {
   const [snapshot, setSnapshot] = useState<SpaceWeatherSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -90,22 +92,22 @@ export function SpaceWeatherPanel() {
 
   return (
     <aside
-      aria-label="NASA space weather"
+      aria-label={t('solarWeather')}
       className={`pointer-events-auto fixed right-[22rem] top-6 z-10 hidden w-64 rounded-2xl border p-5 backdrop-blur-xl lg:block ${surface}`}
     >
       <header className="flex items-start justify-between gap-3">
         <div>
           <h2 className={`text-[10px] uppercase tracking-[0.28em] ${light ? 'text-sky-600/80' : 'text-sky-300/70'}`}>
-            Solar weather
+            {t('solarWeather')}
           </h2>
-          <p className={`mt-1 text-[10px] ${muted}`}>NASA DONKI · server-cached reports</p>
+          <p className={`mt-1 text-[10px] ${muted}`}>{t('nasaReports')}</p>
         </div>
         <button
           type="button"
           onClick={() => void refresh()}
           disabled={loading}
-          aria-label="Refresh NASA solar weather"
-          title="Refresh NASA solar weather"
+          aria-label={t('refreshSolarWeather')}
+          title={t('refreshSolarWeather')}
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-wait ${
             light
               ? 'border-slate-300 text-slate-500 hover:border-sky-400 hover:text-sky-700'
@@ -131,18 +133,18 @@ export function SpaceWeatherPanel() {
           ))}
         </ul>
       ) : (
-        <p className={`mt-4 text-[11px] ${muted}`}>Loading NASA reports…</p>
+        <p className={`mt-4 text-[11px] ${muted}`}>{t('loadingNasaReports')}</p>
       )}
 
-      {snapshot && <p className={`mt-4 text-[10px] tabular-nums ${muted}`}>Updated {formatTime(snapshot.fetchedAt)}</p>}
-      {snapshot && <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>Solar visuals respond to these observed reports.</p>}
+      {snapshot && <p className={`mt-4 text-[10px] tabular-nums ${muted}`}>{t('updated')} {formatTime(snapshot.fetchedAt)}</p>}
+      {snapshot && <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>{t('solarVisualsNote')}</p>}
       <a
         href="https://eyes.nasa.gov/apps/dsn-now/"
         target="_blank"
         rel="noreferrer"
         className={`mt-4 inline-flex text-[10px] uppercase tracking-[0.16em] transition-colors ${light ? 'text-sky-700 hover:text-sky-900' : 'text-sky-200/75 hover:text-sky-100'}`}
       >
-        Open NASA Eyes · DSN Now ↗
+        {t('openNasaEyes')}
       </a>
       <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>Live station status remains in NASA’s dedicated interface; Orbitim does not infer DSN links.</p>
     </aside>

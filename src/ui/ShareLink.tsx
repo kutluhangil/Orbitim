@@ -3,6 +3,7 @@ import { Check, Link2 } from 'lucide-react';
 import { useSimTime } from '../scene/useSimTime';
 import { SATELLITE_GROUPS, useSatelliteGroups } from '../scene/satelliteGroups';
 import { replaceShareState, shareUrl, type ShareState } from '../lib/urlState';
+import { useTranslation } from './i18n';
 
 const DEFAULT_GROUPS = SATELLITE_GROUPS.filter((g) => g.defaultOn).map((g) => g.id);
 
@@ -29,6 +30,7 @@ type Status = 'idle' | 'copied' | 'address-bar';
 
 export function ShareLink() {
   const [status, setStatus] = useState<Status>('idle');
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (status === 'idle') return;
@@ -49,7 +51,7 @@ export function ShareLink() {
     }
   };
 
-  const label = status === 'copied' ? 'Link copied' : status === 'address-bar' ? 'In address bar' : 'Share view';
+  const label = status === 'copied' ? t('linkCopied') : status === 'address-bar' ? t('inAddressBar') : t('shareView');
 
   return (
     <button

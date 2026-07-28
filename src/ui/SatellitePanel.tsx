@@ -4,6 +4,7 @@ import { ISS_NORAD_ID, SATELLITE_GROUPS, useSatelliteGroups } from '../scene/sat
 import { useSatelliteSelection } from '../scene/satelliteSelection';
 import { useIsCompact } from './useMediaQuery';
 import { tleHealthLabel } from '../lib/dataHealth';
+import { useTranslation } from './i18n';
 
 /**
  * Constellation switchboard. Only meaningful while the camera is at Earth, so
@@ -28,6 +29,7 @@ export function SatellitePanel() {
   // rail on a desktop and on the dossier on a phone.
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   /**
    * Puts the camera on the station itself. The stations set is loaded on demand
@@ -109,7 +111,7 @@ export function SatellitePanel() {
         onClick={rideTheStation}
         className="flex h-11 w-full items-center justify-center rounded-lg border border-sky-300/25 text-[11px] uppercase tracking-[0.2em] text-sky-200/80 transition-colors hover:border-sky-300/50 hover:text-sky-100 md:h-9"
       >
-        Ride the ISS
+        {t('rideIss')}
       </button>
       {error && <p className="mt-2 text-[11px] leading-relaxed text-red-300/80">{error}</p>}
     </div>
@@ -126,26 +128,26 @@ export function SatellitePanel() {
           className="pointer-events-auto fixed right-3 top-[calc(env(safe-area-inset-top)+3.75rem)] z-30 flex h-10 items-center gap-2 rounded-full border border-white/10 bg-black/70 px-3.5 text-[10px] uppercase tracking-[0.2em] text-white/70 backdrop-blur-xl"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden />
-          Sats
+          {t('satellites')}
           <span className="tabular-nums text-white/40">{total.toLocaleString('en-US')}</span>
         </button>
 
         {open && (
           <section
             id="satellite-sheet"
-            aria-label="Satellite constellations"
+            aria-label={t('satellites')}
             className="pointer-events-auto fixed inset-x-0 bottom-[var(--system-dock)] z-40 max-h-[58dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-white/10 bg-black/85 backdrop-blur-xl"
           >
             <header className="sticky top-0 flex items-center justify-between border-b border-white/8 bg-black/60 px-4 py-3 backdrop-blur-xl">
               <span className="text-[10px] uppercase tracking-[0.2em] text-white/60">
-                Satellites <span className="tabular-nums text-white/35">{total.toLocaleString('en-US')}</span>
+                {t('satellites')} <span className="tabular-nums text-white/35">{total.toLocaleString('en-US')}</span>
               </span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className="text-[10px] uppercase tracking-[0.2em] text-sky-200/80"
               >
-                Close
+                {t('close')}
               </button>
             </header>
             {station}
@@ -158,7 +160,7 @@ export function SatellitePanel() {
 
   return (
     <section
-      aria-label="Satellite constellations"
+      aria-label={t('satellites')}
       /* Bottom left on desktop: the info panel owns the right column and the
          body rail ends above this, so the three never overlap. */
       className="pointer-events-auto fixed bottom-24 left-6 z-20 w-56 rounded-2xl border border-white/10 bg-black/55 backdrop-blur-xl"
@@ -169,7 +171,7 @@ export function SatellitePanel() {
         aria-expanded={open}
         className="flex w-full items-center justify-between px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-white/60 transition-colors hover:text-sky-200"
       >
-        <span>Satellites</span>
+        <span>{t('satellites')}</span>
         <span className="tabular-nums text-white/35">{total.toLocaleString('en-US')}</span>
       </button>
 

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useSimTime } from '../scene/useSimTime';
 import { useViewSettings } from '../scene/viewSettings';
+import { useTranslation } from './i18n';
 
 /**
  * Simulated seconds per real second. The low end is where rotation reads
  * correctly; the high end is where orbital motion does.
  */
 const SPEEDS = [
-  { label: 'Real', value: 1 },
+  { label: 'real', value: 1 },
   { label: '1 min/s', value: 60 },
   { label: '5 min/s', value: 300 },
   { label: '1 h/s', value: 3600 },
@@ -35,6 +36,7 @@ export function TimeControls() {
   const mode = useViewSettings((s) => s.mode);
   const setMode = useViewSettings((s) => s.setMode);
   const [stamp, setStamp] = useState('');
+  const { t } = useTranslation();
 
   useEffect(() => {
     const render = () => setStamp(useSimTime.getState().date.toISOString().replace('T', ' ').slice(0, 19));
@@ -54,10 +56,10 @@ export function TimeControls() {
             togglePlaying();
             if (mode === 'now') setMode('scientific');
           }}
-          aria-label={playing ? 'Pause simulated time' : 'Resume simulated time'}
+          aria-label={playing ? t('pauseTime') : t('resumeTime')}
           className="-ml-1 flex h-11 min-w-11 items-center justify-center rounded-full px-3 text-[11px] uppercase tracking-[0.2em] text-white/70 transition-colors hover:text-sky-200 md:ml-0 md:h-auto md:min-w-0 md:px-0 md:text-white/60"
         >
-          {playing ? 'Pause' : 'Play'}
+          {playing ? t('pause') : t('play')}
         </button>
 
         <span className="flex-1 truncate text-center font-mono text-[12px] tabular-nums tracking-wide text-white/80 md:flex-none md:text-left">
@@ -67,7 +69,7 @@ export function TimeControls() {
         {/* The speed row moves onto its own line below `md`, so it keeps the
             timestamp readable instead of pushing it off the edge. */}
         <div className="hidden shrink-0 items-center gap-1 overflow-x-auto [@media(max-height:480px)]:flex md:flex">
-          <Speeds multiplier={multiplier} setMultiplier={setMultiplier} onChangeMode={() => mode === 'now' && setMode('scientific')} />
+          <Speeds multiplier={multiplier} setMultiplier={setMultiplier} onChangeMode={() => mode === 'now' && setMode('scientific')} realLabel={t('real')} />
         </div>
 
         <button
@@ -80,12 +82,12 @@ export function TimeControls() {
           }}
           className="flex h-11 items-center rounded-full px-3 text-[10px] uppercase tracking-[0.16em] text-white/50 transition-colors hover:text-sky-200 md:h-auto md:px-0 md:text-white/40"
         >
-          Now
+          {t('now')}
         </button>
       </div>
 
       <div className="mt-1 flex items-center gap-1 overflow-x-auto pb-0.5 [@media(max-height:480px)]:hidden md:hidden [scrollbar-width:none]">
-        <Speeds multiplier={multiplier} setMultiplier={setMultiplier} onChangeMode={() => mode === 'now' && setMode('scientific')} />
+        <Speeds multiplier={multiplier} setMultiplier={setMultiplier} onChangeMode={() => mode === 'now' && setMode('scientific')} realLabel={t('real')} />
       </div>
     </div>
   );
@@ -95,9 +97,10 @@ interface SpeedsProps {
   multiplier: number;
   setMultiplier: (value: number) => void;
   onChangeMode: () => void;
+  realLabel: string;
 }
 
-function Speeds({ multiplier, setMultiplier, onChangeMode }: SpeedsProps) {
+function Speeds({ multiplier, setMultiplier, onChangeMode, realLabel }: SpeedsProps) {
   return (
     <>
       {SPEEDS.map((speed) => (
@@ -113,7 +116,7 @@ function Speeds({ multiplier, setMultiplier, onChangeMode }: SpeedsProps) {
             multiplier === speed.value ? 'bg-sky-300/15 text-sky-200' : 'text-white/45 hover:text-white/80'
           }`}
         >
-          {speed.label}
+          {speed.label === 'real' ? realLabel : speed.label}
         </button>
       ))}
     </>

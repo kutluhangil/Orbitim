@@ -1,5 +1,6 @@
 import { EffectComposer, Bloom, SMAA, Vignette } from '@react-three/postprocessing';
 import { graphicsTier } from '../lib/device';
+import { useFlight } from '../flight/useFlight';
 import { useViewSettings } from './viewSettings';
 
 /**
@@ -15,9 +16,11 @@ import { useViewSettings } from './viewSettings';
 export function Effects() {
   const light = useViewSettings((s) => s.theme === 'light');
   const scientific = useViewSettings((s) => s.mode === 'scientific');
+  const focusedSun = useFlight((s) => s.target === 'sun');
+  const bloomIntensity = focusedSun ? (scientific ? 1.22 : 1.38) : scientific ? 0.66 : 0.9;
   return (
     <EffectComposer enableNormalPass={false} multisampling={0}>
-      <Bloom intensity={scientific ? 0.52 : 0.68} luminanceThreshold={0.8} luminanceSmoothing={0.32} mipmapBlur />
+      <Bloom intensity={bloomIntensity} luminanceThreshold={focusedSun ? 0.55 : 0.72} luminanceSmoothing={0.34} mipmapBlur />
       {/* The vignette pulls focus on the dark field; over the light theme the
           same darkening only greys the corners, so it is dropped there. */}
       {light ? <></> : <Vignette eskil={false} offset={0.26} darkness={0.7} />}

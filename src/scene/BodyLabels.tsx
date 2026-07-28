@@ -6,6 +6,7 @@ import { PLANETS, type BodyId } from '../lib/ephemeris/bodies';
 import { useFlight } from '../flight/useFlight';
 import { sceneRadiusOf, type PositionRegistry } from './bodyPositions';
 import { useViewSettings } from './viewSettings';
+import { localizedBodyName, useTranslation } from '../ui/i18n';
 
 interface BodyLabelsProps {
   registry: PositionRegistry;
@@ -45,6 +46,7 @@ const LEADER_THRESHOLD = 4;
 export function BodyLabels({ registry, onSelect }: BodyLabelsProps) {
   const { camera, size } = useThree();
   const light = useViewSettings((s) => s.theme === 'light');
+  const { language } = useTranslation();
   const nodes = useRef(new Map<BodyId, HTMLButtonElement | null>());
   const leaders = useRef(new Map<BodyId, SVGLineElement | null>());
   const projected = useMemo(() => new THREE.Vector3(), []);
@@ -191,7 +193,7 @@ export function BodyLabels({ registry, onSelect }: BodyLabelsProps) {
               style={{ backgroundColor: planet.color }}
               aria-hidden
             />
-            {planet.name}
+            {localizedBodyName(language, planet.id, planet.name)}
           </button>
         ))}
       </div>

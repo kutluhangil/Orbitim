@@ -9,6 +9,7 @@ import { useViewSettings } from '../scene/viewSettings';
 import { tleHealthLabel } from '../lib/dataHealth';
 import { findNextStarlinkRises, type StarlinkRise } from '../lib/ephemeris/starlinkPasses';
 import { useIsCompact } from './useMediaQuery';
+import { useTranslation } from './i18n';
 
 function formatAngle(value: number): string {
   const sign = value > 0 ? '+' : '';
@@ -55,6 +56,7 @@ export function ObserverPanel() {
   const starlinkHealth = useSatelliteGroups((state) => state.health.starlink);
   const compact = useIsCompact();
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     void load('stations').catch((cause) => {
@@ -118,9 +120,9 @@ export function ObserverPanel() {
       <header className="flex items-start justify-between gap-3">
         <div>
           <h2 className={`text-[10px] uppercase tracking-[0.28em] ${light ? 'text-sky-600/80' : 'text-sky-300/70'}`}>
-            Local sky
+            {t('localSky')}
           </h2>
-          <p className={`mt-1 text-[10px] ${muted}`}>Topocentric ephemeris · horizon</p>
+          <p className={`mt-1 text-[10px] ${muted}`}>{t('topocentricHorizon')}</p>
         </div>
         <Crosshair className={`mt-0.5 h-4 w-4 ${light ? 'text-sky-600' : 'text-sky-200/80'}`} aria-hidden />
       </header>
@@ -132,7 +134,7 @@ export function ObserverPanel() {
             const preset = OBSERVER_PRESETS.find((item) => item.label === event.target.value);
             if (preset) setLocation(preset);
           }}
-          aria-label="Observation location"
+          aria-label={t('observationLocation')}
           className={`min-w-0 flex-1 rounded-lg border bg-transparent px-2.5 py-2 text-[11px] outline-none ${light ? 'border-slate-300 text-slate-700' : 'border-white/10 text-white/80'}`}
         >
           {location.label === 'Device location' && <option value="">Device location</option>}
@@ -141,8 +143,8 @@ export function ObserverPanel() {
         <button
           type="button"
           onClick={useDeviceLocation}
-          aria-label="Use device location"
-          title="Use device location"
+          aria-label={t('useDeviceLocation')}
+          title={t('useDeviceLocation')}
           className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${light ? 'border-slate-300 text-slate-500 hover:text-sky-700' : 'border-white/10 text-white/50 hover:text-sky-100'}`}
         >
           <LocateFixed className="h-3.5 w-3.5" />
@@ -158,11 +160,11 @@ export function ObserverPanel() {
               {formatAngle(object.altitude)} alt · {Math.round(object.azimuth)}° az
             </span>
           </li>
-        )) : <li className={`text-[11px] ${muted}`}>No selected bright body is above the horizon.</li>}
+        )) : <li className={`text-[11px] ${muted}`}>{t('noBrightBody')}</li>}
       </ul>
 
       <div className={`mt-5 border-t pt-4 ${light ? 'border-slate-200' : 'border-white/8'}`}>
-        <div className={`text-[10px] uppercase tracking-[0.2em] ${muted}`}>Next ISS pass</div>
+        <div className={`text-[10px] uppercase tracking-[0.2em] ${muted}`}>{t('nextIssPass')}</div>
         {stationError ? (
           <p className="mt-1 text-[11px] leading-relaxed text-red-300/90">{stationError}</p>
         ) : !stations ? (
@@ -180,14 +182,14 @@ export function ObserverPanel() {
 
       <div className={`mt-4 border-t pt-4 ${light ? 'border-slate-200' : 'border-white/8'}`}>
         <div className="flex items-center justify-between gap-2">
-          <span className={`text-[10px] uppercase tracking-[0.2em] ${muted}`}>Starlink rises</span>
+          <span className={`text-[10px] uppercase tracking-[0.2em] ${muted}`}>{t('starlinkRises')}</span>
           <button
             type="button"
             onClick={() => void searchStarlink()}
             disabled={starlinkState === 'loading'}
             className={`rounded-md border px-2 py-1 text-[9px] uppercase tracking-[0.16em] transition-colors disabled:cursor-wait ${light ? 'border-slate-300 text-sky-700' : 'border-sky-300/25 text-sky-200/80'}`}
           >
-            {starlinkState === 'loading' ? 'Scanning…' : starlink ? 'Refresh' : 'Find'}
+            {starlinkState === 'loading' ? t('scanning') : starlink ? t('refresh') : t('find')}
           </button>
         </div>
         {starlinkState === 'idle' && <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>Runs on demand in a worker; only rises above 10° are listed.</p>}
@@ -223,14 +225,14 @@ export function ObserverPanel() {
           className={`pointer-events-auto fixed left-3 top-[calc(env(safe-area-inset-top)+3.75rem)] z-30 flex h-10 items-center gap-2 rounded-full border px-3.5 text-[10px] uppercase tracking-[0.2em] backdrop-blur-xl ${light ? 'border-slate-300 bg-white/80 text-slate-600' : 'border-white/10 bg-black/70 text-white/70'}`}
         >
           <Crosshair className="h-3.5 w-3.5" aria-hidden />
-          Sky
+          {t('localSky')}
           <span className={`h-1.5 w-1.5 rounded-full ${visible.length > 0 ? 'bg-sky-300' : 'bg-white/25'}`} aria-hidden />
         </button>
 
         {open && (
           <section
             id="observer-sheet"
-            aria-label="Observer sky"
+            aria-label={t('localSky')}
             className={`pointer-events-auto fixed inset-x-0 bottom-[var(--system-dock)] z-40 max-h-[70dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t p-5 backdrop-blur-xl ${surface}`}
           >
             <div className="mb-3 flex justify-end">
@@ -239,7 +241,7 @@ export function ObserverPanel() {
                 onClick={() => setOpen(false)}
                 className={`text-[10px] uppercase tracking-[0.2em] ${light ? 'text-sky-700' : 'text-sky-200/80'}`}
               >
-                Close
+                {t('close')}
               </button>
             </div>
             {panelContent}
@@ -251,7 +253,7 @@ export function ObserverPanel() {
 
   return (
     <aside
-      aria-label="Observer sky"
+      aria-label={t('localSky')}
       className={`pointer-events-auto fixed left-6 top-6 z-10 hidden w-64 rounded-2xl border p-5 backdrop-blur-xl lg:block ${surface}`}
     >
       {panelContent}

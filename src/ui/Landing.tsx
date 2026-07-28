@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ALL_BODIES } from '../lib/ephemeris/bodies';
 import { auToKm, auToLightMinutes, getBodyState, getHeliocentric } from '../lib/ephemeris/positions';
+import { translate, useLanguage, useTranslation, type AppLanguage } from './i18n';
 
 interface LandingProps {
   onEnter: () => void;
@@ -62,57 +63,47 @@ function orbitalSpeedKmS(date: Date): number {
   return distance / ((2 * step) / 1000);
 }
 
-function readings(date: Date): Reading[] {
+function readings(date: Date, language: AppLanguage): Reading[] {
   const mars = getBodyState('mars', date);
   const moon = getBodyState('moon', date);
   const sunLagMinutes = auToLightMinutes(getBodyState('sun', date).distanceFromEarthAU);
 
   return [
     {
-      label: 'Universal time',
+      label: translate(language, 'universalTime'),
       value: date.toISOString().slice(11, 19),
       unit: 'UTC'
     },
     {
-      label: 'Earth orbital speed',
+      label: translate(language, 'earthOrbitalSpeed'),
       value: orbitalSpeedKmS(date).toFixed(2),
       unit: 'km/s'
     },
     {
-      label: 'Range to Mars',
-      value: Math.round(auToKm(mars.distanceFromEarthAU) / 1e6).toLocaleString('en-US'),
-      unit: 'million km'
+      label: translate(language, 'rangeToMars'),
+      value: Math.round(auToKm(mars.distanceFromEarthAU) / 1e6).toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US'),
+      unit: translate(language, 'millionKm')
     },
     {
-      label: 'Range to the Moon',
-      value: Math.round(auToKm(moon.distanceFromEarthAU)).toLocaleString('en-US'),
+      label: translate(language, 'rangeToMoon'),
+      value: Math.round(auToKm(moon.distanceFromEarthAU)).toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US'),
       unit: 'km'
     },
     {
-      label: 'Sunlight in transit',
+      label: translate(language, 'sunlightTransit'),
       value: sunLagMinutes.toFixed(1),
-      unit: 'minutes old'
+      unit: translate(language, 'minutesOld')
     }
   ];
 }
 
-const CAPABILITIES = [
-  {
-    label: 'Ephemeris',
-    title: 'Positions, not animations',
-    body: 'Every body sits where VSOP87 says it is for the instant on the clock. Scrub to 2031 and the alignment is the one the sky will hold.'
-  },
-  {
-    label: 'Propagation',
-    title: 'Satellites from live elements',
-    body: 'CelesTrak orbital elements, SGP4 propagated in your browser. Fourteen constellations, switched on and off as you like.'
-  },
-  {
-    label: 'Surfaces',
-    title: 'Eight thousand pixels wide',
-    body: 'NASA-derived imagery streams in as you approach and is released as you leave. Clouds, city lights, ring shadows and all.'
-  }
-];
+function capabilities(language: AppLanguage) {
+  return [
+    { label: translate(language, 'ephemeris'), title: translate(language, 'positionsNotAnimations'), body: translate(language, 'ephemerisBody') },
+    { label: translate(language, 'propagation'), title: translate(language, 'satellitesLive'), body: translate(language, 'propagationBody') },
+    { label: translate(language, 'surfaces'), title: translate(language, 'surfaceTitle'), body: translate(language, 'surfaceBody') }
+  ];
+}
 
 /**
  * Opening screen. It sits over the live scene rather than in front of a still
@@ -124,13 +115,16 @@ export function Landing({ onEnter }: LandingProps) {
   const [leaving, setLeaving] = useState(false);
   const [instant, setInstant] = useState(() => new Date());
   const reduced = usePrefersReducedMotion();
+  const { language, t } = useTranslation();
+  const setLanguage = useLanguage((state) => state.setLanguage);
 
   useEffect(() => {
     const timer = window.setInterval(() => setInstant(new Date()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const telemetry = useMemo(() => readings(instant), [instant]);
+  const telemetry = useMemo(() => readings(instant, language), [instant, language]);
+  const capabilitiesList = useMemo(() => capabilities(language), [language]);
 
   const leave = () => {
     setLeaving(true);
@@ -185,32 +179,48 @@ export function Landing({ onEnter }: LandingProps) {
             <OrbitMark animate={!reduced} />
             <span className="font-mono text-[12px] uppercase tracking-[0.5em] text-white">Orbitim</span>
           </span>
-          <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.24em] text-white/40">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" aria-hidden />
-            Live · {ALL_BODIES.length} bodies
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.24em] text-white/40">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" aria-hidden />
+              {t('liveBodies', { count: ALL_BODIES.length })}
+            </span>
+            <div role="group" aria-label={t('changeLanguage')} className="flex rounded-full border border-white/10 bg-black/30 p-0.5">
+              {(['en', 'tr'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setLanguage(option)}
+                  aria-pressed={language === option}
+                  className={`rounded-full px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] transition-colors ${
+                    language === option ? 'bg-sky-300/15 text-sky-100' : 'text-white/35 hover:text-white/75'
+                  }`}
+                >
+                  {option === 'en' ? 'EN' : 'TR'}
+                </button>
+              ))}
+            </div>
+          </div>
         </header>
 
         <main className="flex max-w-3xl flex-1 flex-col justify-center py-4 md:py-10">
           <p className="rise font-mono text-[10px] uppercase tracking-[0.34em] text-sky-300/70" style={{ animationDelay: '80ms' }}>
-            Solar system, observed
+            {t('solarSystemObserved')}
           </p>
 
           <h1
             className="rise mt-4 text-balance text-[clamp(2rem,8.5vw,4.8rem)] font-extralight leading-[1.02] tracking-[-0.03em] text-white md:mt-5 md:leading-[0.98] md:tracking-[-0.035em]"
             style={{ animationDelay: '160ms' }}
           >
-            Everything up there,
+            {t('landingTitleLineOne')}
             <br />
-            <span className="text-sky-200/90">where it is right now.</span>
+            <span className="text-sky-200/90">{t('landingTitleLineTwo')}</span>
           </h1>
 
           <p
             className="rise mt-5 max-w-lg text-[14px] leading-relaxed text-white/55 md:mt-7 md:text-[15px]"
             style={{ animationDelay: '240ms' }}
           >
-            Twenty-eight worlds, their rings and moons, and eleven thousand tracked satellites — placed by
-            orbital mechanics rather than by hand. Fly to any of them and read what we know today.
+            {t('landingBody')}
           </p>
 
           <div
@@ -222,11 +232,11 @@ export function Landing({ onEnter }: LandingProps) {
               onClick={leave}
               className="sweep relative flex h-14 w-full items-center justify-center overflow-hidden rounded-full border border-sky-200/30 px-9 font-mono text-[11px] uppercase tracking-[0.3em] text-sky-100 transition-colors hover:border-sky-200/80 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-300 sm:h-auto sm:w-auto sm:py-3.5"
             >
-              Enter the system
+              {t('enterSystem')}
             </button>
             {/* A keyboard hint is noise on a device without one. */}
             <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-white/25 sm:inline">
-              or press Enter
+              {t('pressEnter')}
             </span>
           </div>
         </main>
@@ -235,7 +245,7 @@ export function Landing({ onEnter }: LandingProps) {
             ephemeris on the second it is shown, including the ones that never
             appear in a fact sheet — the Earth's own speed around the Sun, and
             how old the sunlight reaching you is. */}
-        <section aria-label="Live readings" className="rise" style={{ animationDelay: '400ms' }}>
+        <section aria-label={t('liveReadings')} className="rise" style={{ animationDelay: '400ms' }}>
           <div className="grid grid-cols-2 gap-x-6 gap-y-5 border-t border-white/10 pt-5 sm:grid-cols-3 sm:gap-x-8 sm:gap-y-6 sm:pt-6 lg:grid-cols-5">
             {telemetry.map((reading) => (
               <div key={reading.label}>
@@ -251,7 +261,7 @@ export function Landing({ onEnter }: LandingProps) {
           </div>
 
           <div className="mt-6 grid gap-5 border-t border-white/8 pt-6 md:mt-8 md:grid-cols-3 md:gap-12 md:pt-7">
-            {CAPABILITIES.map((capability) => (
+            {capabilitiesList.map((capability) => (
               <article key={capability.label}>
                 <span className="font-mono text-[9px] uppercase tracking-[0.26em] text-white/30">{capability.label}</span>
                 <h2 className="mt-2 text-[15px] font-normal text-white/90">{capability.title}</h2>

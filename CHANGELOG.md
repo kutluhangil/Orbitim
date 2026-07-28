@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added an instant English/Türkçe interface switch across the entry experience, time controls, body dock, accessible planet labels, dossiers and primary science controls; source agency names and scientific units remain verbatim.
+- Rebalanced the Sun as an HDR emitter with a structured close-range corona and focus-aware bloom, preserving photospheric texture while giving the scene a clearly luminous solar source.
 - Added a close-view, physically scaled Mars elevation mesh from the global NASA PDS MGS MOLA median-topography grid, with its source, coverage and measurement period visible in Scientific mode.
 - Added a silent, ephemeris-calculated event rail tied to the simulation clock, provenance labels for event and Horizons/CNEOS data, and a direct NASA Eyes DSN Now link instead of inferred station connections.
 - Added explicit NASA EPIC Earth and SDO AIA 171 observation cards to Now mode, preserving the difference between EPIC capture time and an SDO asset publication timestamp.

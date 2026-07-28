@@ -6,6 +6,7 @@ import { useViewSettings } from '../scene/viewSettings';
 import { fetchNearApproaches, type NearApproach } from '../services/nearApproaches';
 import { useSpacecraftState } from '../scene/spacecraftState';
 import { DataProvenanceBadge } from './DataProvenanceBadge';
+import { useTranslation } from './i18n';
 
 /**
  * The sky's calendar, shown in the overview where the right-hand column is free.
@@ -38,6 +39,7 @@ export function EventsPanel() {
   const horizonsUpdatedAt = useSpacecraftState((state) => state.updatedAt);
   const horizonsError = useSpacecraftState((state) => state.error);
   const refreshHorizons = useSpacecraftState((state) => state.refresh);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const timer = window.setInterval(() => setTick((t) => t + 1), 1000);
@@ -93,7 +95,7 @@ export function EventsPanel() {
     >
       <header className="flex items-start justify-between gap-3">
         <h2 className={`text-[10px] uppercase tracking-[0.28em] ${light ? 'text-sky-600/80' : 'text-sky-300/70'}`}>
-          The sky right now
+          {t('skyRightNow')}
         </h2>
         <DataProvenanceBadge kind="calculated">Ephemeris</DataProvenanceBadge>
       </header>
@@ -109,7 +111,7 @@ export function EventsPanel() {
       </div>
 
       <h3 className={`mb-1 mt-6 text-[10px] uppercase tracking-[0.22em] ${light ? 'text-slate-400' : 'text-white/30'}`}>
-        Coming up
+        {t('comingUp')}
       </h3>
       <ul className="space-y-3">
         {events.map((event) => {
@@ -121,7 +123,7 @@ export function EventsPanel() {
                 <div className={`truncate text-[11px] leading-snug ${muted}`}>{event.detail}</div>
                 <p className={`mt-1 text-[10px] leading-snug ${muted}`}>{eventNarrative(event)}</p>
                 <div className="mt-2 flex items-center gap-3">
-                  <button type="button" onClick={() => visitEvent(event)} className={`text-[9px] uppercase tracking-[0.16em] ${light ? 'text-sky-700' : 'text-sky-200/80'}`}>Visit event</button>
+                  <button type="button" onClick={() => visitEvent(event)} className={`text-[9px] uppercase tracking-[0.16em] ${light ? 'text-sky-700' : 'text-sky-200/80'}`}>{t('visitEventShort')}</button>
                 </div>
               </div>
               <div className="shrink-0 text-right">
@@ -132,16 +134,16 @@ export function EventsPanel() {
           );
         })}
       </ul>
-      <p className={`mt-3 text-[10px] leading-relaxed ${muted}`}>Event geometry is calculated from the simulation ephemeris for the UTC instant on the clock.</p>
+      <p className={`mt-3 text-[10px] leading-relaxed ${muted}`}>{t('eventGeometryNote')}</p>
 
       <div className={`mt-6 border-t pt-4 ${light ? 'border-slate-200' : 'border-white/8'}`}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h3 className={`text-[10px] uppercase tracking-[0.22em] ${light ? 'text-slate-400' : 'text-white/30'}`}>JPL trajectories</h3>
+            <h3 className={`text-[10px] uppercase tracking-[0.22em] ${light ? 'text-slate-400' : 'text-white/30'}`}>{t('jplTrajectories')}</h3>
             <div className="mt-1"><DataProvenanceBadge kind="calculated">Horizons</DataProvenanceBadge></div>
           </div>
           <button type="button" onClick={refreshLiveVectors} disabled={horizonsStatus === 'loading'} className={`rounded-md border px-2 py-1 text-[9px] uppercase tracking-[0.16em] disabled:cursor-wait ${light ? 'border-slate-300 text-sky-700' : 'border-sky-300/25 text-sky-200/80'}`}>
-            {horizonsStatus === 'loading' ? 'Loading…' : 'Refresh'}
+            {horizonsStatus === 'loading' ? t('loading') : t('refresh')}
           </button>
         </div>
         {horizonsStatus === 'ready' && horizonsUpdatedAt && <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>5 heliocentric state vectors · JPL Horizons · fetched {horizonsUpdatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC</p>}
@@ -157,7 +159,7 @@ export function EventsPanel() {
             <div className="mt-1"><DataProvenanceBadge kind="calculated">CNEOS</DataProvenanceBadge></div>
           </div>
           <button type="button" onClick={() => void loadApproaches()} disabled={approachState === 'loading'} className={`rounded-md border px-2 py-1 text-[9px] uppercase tracking-[0.16em] disabled:cursor-wait ${light ? 'border-slate-300 text-sky-700' : 'border-sky-300/25 text-sky-200/80'}`}>
-            {approachState === 'loading' ? 'Loading…' : approachState === 'ready' ? 'Refresh' : 'Load'}
+            {approachState === 'loading' ? t('loading') : approachState === 'ready' ? t('refresh') : t('load')}
           </button>
         </div>
         {approachState === 'idle' && <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>The next six NEO approaches within 0.05 AU, requested only when opened.</p>}

@@ -12,6 +12,7 @@ import { useIsCompact } from './useMediaQuery';
 import { BodyDisc } from './BodyDisc';
 import { ObservationCard } from './ObservationCard';
 import { Row } from './Row';
+import { localizedBodyKind, localizedBodyName, useTranslation } from './i18n';
 
 function formatKm(km: number): string {
   return `${Math.round(km).toLocaleString('en-US')} km`;
@@ -22,10 +23,10 @@ function formatLightTravelTime(minutes: number): string {
   return `${minutes.toFixed(1)} min`;
 }
 
-function formatSolarFlux(flux: number | null): string {
-  if (flux === null) return 'not defined';
-  if (flux >= 0.1) return `${flux.toFixed(2)}× Earth`;
-  return `${(flux * 100).toFixed(1)}% Earth`;
+function formatSolarFlux(flux: number | null, notDefined: string, earth: string): string {
+  if (flux === null) return notDefined;
+  if (flux >= 0.1) return `${flux.toFixed(2)}× ${earth}`;
+  return `${(flux * 100).toFixed(1)}% ${earth}`;
 }
 
 /**
@@ -48,6 +49,7 @@ export function InfoPanel() {
   const nowMode = useViewSettings((s) => s.mode === 'now');
   const [open, setOpen] = useState(!compact);
   const [, setTick] = useState(0);
+  const { language, t } = useTranslation();
 
   useEffect(() => {
     const timer = window.setInterval(() => setTick((t) => t + 1), 1000);
@@ -68,6 +70,8 @@ export function InfoPanel() {
   const illumination = getSolarIllumination(target, date);
   const moons = getMoonsOf(target);
   const exploration = getExploration(target);
+  const name = localizedBodyName(language, target, record.name);
+  const kind = localizedBodyKind(language, record.kind);
 
   return (
     <aside className="pointer-events-auto fixed inset-x-0 bottom-[var(--system-dock)] z-20 rounded-t-2xl border-t border-white/10 bg-black/75 backdrop-blur-xl md:inset-x-auto md:bottom-auto md:right-6 md:top-1/2 md:max-h-[80vh] md:w-[22rem] md:-translate-y-1/2 md:overflow-y-auto md:rounded-2xl md:border">
@@ -82,10 +86,10 @@ export function InfoPanel() {
         <span className="absolute left-1/2 top-1.5 h-1 w-9 -translate-x-1/2 rounded-full bg-white/20" aria-hidden />
         <BodyDisc id={target} className="h-9 w-9" />
         <span className="flex-1">
-          <span className="block text-[10px] uppercase tracking-[0.24em] text-sky-300/70">{record.kind}</span>
-          <span className="block text-lg font-light tracking-tight text-white">{record.name}</span>
+          <span className="block text-[10px] uppercase tracking-[0.24em] text-sky-300/70">{kind}</span>
+          <span className="block text-lg font-light tracking-tight text-white">{name}</span>
         </span>
-        <span className="text-[10px] uppercase tracking-[0.2em] text-white/40">{open ? 'Hide' : 'Details'}</span>
+        <span className="text-[10px] uppercase tracking-[0.2em] text-white/40">{open ? t('hide') : t('details')}</span>
       </button>
 
       <div
@@ -97,8 +101,8 @@ export function InfoPanel() {
           <div className="flex items-center gap-4">
             <BodyDisc id={target} className="h-14 w-14" />
             <div className="min-w-0">
-              <span className="text-[10px] uppercase tracking-[0.28em] text-sky-300/70">{record.kind}</span>
-              <h2 className="mt-1 text-2xl font-light tracking-tight text-white">{record.name}</h2>
+              <span className="text-[10px] uppercase tracking-[0.28em] text-sky-300/70">{kind}</span>
+              <h2 className="mt-1 text-2xl font-light tracking-tight text-white">{name}</h2>
             </div>
           </div>
           <p className="mt-3 text-[13px] leading-relaxed text-white/50">{facts.tagline}</p>
@@ -107,46 +111,46 @@ export function InfoPanel() {
         <p className="mb-4 text-[13px] leading-relaxed text-white/50 md:hidden">{facts.tagline}</p>
 
         <section className="mb-5">
-          <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">Right now</h3>
+          <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">{t('rightNow')}</h3>
           <dl>
             {target !== 'earth' && (
               <>
-                <Row label="Distance from Earth" value={formatKm(auToKm(state.distanceFromEarthAU))} />
-                <Row label="Light travel time" value={formatLightTravelTime(auToLightMinutes(state.distanceFromEarthAU))} />
+                <Row label={t('distanceFromEarth')} value={formatKm(auToKm(state.distanceFromEarthAU))} />
+                <Row label={t('lightTravelTime')} value={formatLightTravelTime(auToLightMinutes(state.distanceFromEarthAU))} />
               </>
             )}
-            <Row label="Distance from Sun" value={formatKm(auToKm(state.distanceFromSunAU))} />
+            <Row label={t('distanceFromSun')} value={formatKm(auToKm(state.distanceFromSunAU))} />
             <Row
-              label="Apparent magnitude"
-              value={state.magnitude === null ? 'not defined' : state.magnitude.toFixed(2)}
+              label={t('apparentMagnitude')}
+              value={state.magnitude === null ? t('notDefined') : state.magnitude.toFixed(2)}
             />
             <Row
-              label="Illuminated"
-              value={state.phaseFraction === null ? 'not defined' : `${(state.phaseFraction * 100).toFixed(1)} %`}
+              label={t('illuminated')}
+              value={state.phaseFraction === null ? t('notDefined') : `${(state.phaseFraction * 100).toFixed(1)} %`}
             />
           </dl>
         </section>
 
         {scientific && target !== 'sun' && (
           <section className="mb-5 border-y border-sky-300/10 py-4">
-            <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-sky-200/60">Illumination</h3>
+            <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-sky-200/60">{t('illumination')}</h3>
             <dl>
-              <Row label="Solar flux" value={formatSolarFlux(illumination.irradianceAtEarths)} />
-              <Row label="Geometry" value="CALCULATED · J2000" />
-              <Row label="Computed at" value={date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC'} />
-              <Row label="Scale" value="Visual distances compressed" />
+              <Row label={t('solarFlux')} value={formatSolarFlux(illumination.irradianceAtEarths, t('notDefined'), t('earthFlux'))} />
+              <Row label={t('geometry')} value="CALCULATED · J2000" />
+              <Row label={t('computedAt')} value={date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC'} />
+              <Row label={t('scale')} value={t('compressedDistances')} />
             </dl>
           </section>
         )}
 
         {scientific && target === 'mars' && (
           <section className="mb-5 border-y border-sky-300/10 py-4">
-            <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-sky-200/60">Surface relief</h3>
+            <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-sky-200/60">{t('surfaceRelief')}</h3>
             <dl>
-              <Row label="Elevation" value="MOLA · PDS" />
-              <Row label="Coverage" value="Global · 16 px/degree" />
-              <Row label="Measurements" value="MGS · 1999–2001" />
-              <Row label="Relief scale" value="Physical elevation" />
+              <Row label={t('elevation')} value="MOLA · PDS" />
+              <Row label={t('coverage')} value="Global · 16 px/degree" />
+              <Row label={t('measurements')} value="MGS · 1999–2001" />
+              <Row label={t('reliefScale')} value={t('physicalElevation')} />
             </dl>
           </section>
         )}
@@ -154,22 +158,22 @@ export function InfoPanel() {
         {nowMode && (target === 'earth' || target === 'sun') && <ObservationCard target={target} />}
 
         <section className="mb-5">
-          <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">Fact sheet</h3>
+          <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">{t('factSheet')}</h3>
           <dl>
-            <Row label="Equatorial radius" value={formatKm(record.radiusKm)} />
-            <Row label="Mass" value={facts.massKg} />
-            <Row label="Surface gravity" value={facts.gravity} />
-            <Row label="Mean temperature" value={facts.meanTemp} />
-            <Row label="Axial tilt" value={`${record.axialTiltDeg}°`} />
-            <Row label="Day length" value={facts.dayLength} />
-            {facts.yearLength && <Row label="Orbital period" value={facts.yearLength} />}
-            {facts.moons !== null && <Row label="Known moons" value={String(facts.moons)} />}
-            <Row label="Atmosphere" value={facts.atmosphere} />
+            <Row label={t('equatorialRadius')} value={formatKm(record.radiusKm)} />
+            <Row label={t('mass')} value={facts.massKg} />
+            <Row label={t('surfaceGravity')} value={facts.gravity} />
+            <Row label={t('meanTemperature')} value={facts.meanTemp} />
+            <Row label={t('axialTilt')} value={`${record.axialTiltDeg}°`} />
+            <Row label={t('dayLength')} value={facts.dayLength} />
+            {facts.yearLength && <Row label={t('orbitalPeriod')} value={facts.yearLength} />}
+            {facts.moons !== null && <Row label={t('knownMoons')} value={String(facts.moons)} />}
+            <Row label={t('atmosphere')} value={facts.atmosphere} />
           </dl>
         </section>
 
         <section className="mb-5">
-          <h3 className="mb-2 text-[10px] uppercase tracking-[0.22em] text-white/30">Active missions</h3>
+          <h3 className="mb-2 text-[10px] uppercase tracking-[0.22em] text-white/30">{t('activeMissions')}</h3>
           <ul className="flex flex-wrap gap-1.5">
             {facts.activeMissions.map((mission) => (
               <li
@@ -184,7 +188,7 @@ export function InfoPanel() {
 
         {exploration && (
           <section className="mb-5">
-            <h3 className="mb-2 text-[10px] uppercase tracking-[0.22em] text-white/30">Exploration</h3>
+            <h3 className="mb-2 text-[10px] uppercase tracking-[0.22em] text-white/30">{t('exploration')}</h3>
 
             {exploration.sites.length > 0 && (
               /* The globe carries the same markers, but half of them are round
@@ -232,7 +236,7 @@ export function InfoPanel() {
 
         {moons.length > 0 && (
           <section>
-            <h3 className="mb-2 text-[10px] uppercase tracking-[0.22em] text-white/30">Moons in view</h3>
+            <h3 className="mb-2 text-[10px] uppercase tracking-[0.22em] text-white/30">{t('moonsInView')}</h3>
             <ul className="flex flex-wrap gap-2">
               {moons.map((moon) => (
                 <li key={moon.id}>
@@ -241,7 +245,7 @@ export function InfoPanel() {
                     onClick={() => flyTo(moon.id)}
                     className="flex h-10 items-center rounded-full border border-sky-300/20 px-3.5 text-[11px] text-sky-200/80 transition-colors hover:border-sky-300/50 hover:text-sky-100 md:h-auto md:px-2.5 md:py-1"
                   >
-                    {moon.name}
+                    {localizedBodyName(language, moon.id, moon.name)}
                   </button>
                 </li>
               ))}
@@ -250,7 +254,7 @@ export function InfoPanel() {
         )}
 
         <p className="mt-6 text-[10px] leading-relaxed text-white/25">
-          Positions from VSOP87 via astronomy-engine. Constants from the NASA Planetary Fact Sheet.
+          {t('sourceFootnote')}
         </p>
       </div>
     </aside>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { upcomingEvents, type SkyEvent } from '../lib/ephemeris/events';
 import { useFlight } from '../flight/useFlight';
 import { useSimTime } from '../scene/useSimTime';
+import { useTranslation } from './i18n';
 
 const HORIZON_MS = 45 * 86_400_000;
 
@@ -24,6 +25,7 @@ function visit(event: SkyEvent) {
 export function EventTimeline() {
   const target = useFlight((state) => state.target);
   const [, setTick] = useState(0);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const interval = window.setInterval(() => setTick((value) => value + 1), 1000);
@@ -43,12 +45,12 @@ export function EventTimeline() {
 
   return (
     <section
-      aria-label="Calculated upcoming sky events"
+      aria-label={t('calculatedEvents')}
       className="pointer-events-auto fixed bottom-[calc(var(--time-bar)+5.4rem)] left-1/2 z-20 hidden h-14 w-[min(40rem,calc(100vw-8rem))] -translate-x-1/2 rounded-2xl border border-violet-300/15 bg-black/58 px-5 py-2.5 shadow-lg shadow-black/25 backdrop-blur-xl md:block md:bottom-[10.5rem]"
     >
       <div className="flex items-center justify-between text-[8px] uppercase tracking-[0.18em] text-violet-200/55">
-        <span>Calculated events</span>
-        <span>45 d horizon · UTC</span>
+        <span>{t('calculatedEvents')}</span>
+        <span>{t('eventHorizon')}</span>
       </div>
       <div className="relative mt-2 h-4 border-t border-violet-200/20">
         {events.map((event, index) => {
@@ -59,7 +61,7 @@ export function EventTimeline() {
               key={event.id}
               type="button"
               onClick={() => visit(event)}
-              aria-label={`Visit ${event.label} at ${event.date.toISOString()}`}
+              aria-label={t('visitEvent', { event: event.label, time: event.date.toISOString() })}
               title={`${event.label} · ${shortDate(event.date)} UTC`}
               className={`group absolute -translate-x-1/2 ${above ? '-top-[0.42rem]' : '-top-[0.1rem]'}`}
               style={{ left: `${offset}%` }}

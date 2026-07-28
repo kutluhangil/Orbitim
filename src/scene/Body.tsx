@@ -23,6 +23,7 @@ import { EnceladusPlume } from './EnceladusPlume';
 import { Atmosphere, ATMOSPHERES } from './Atmosphere';
 import { SurfaceSites } from './SurfaceSites';
 import { getExploration } from '../data/missions';
+import { localizedBodyName, useTranslation } from '../ui/i18n';
 
 interface BodyProps {
   id: BodyId;
@@ -70,6 +71,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
   // reveal removes itself when its own animation ends, so this is a single burst
   // per hover rather than a label that has to be dismissed.
   const [revealed, setRevealed] = useState(false);
+  const { language } = useTranslation();
 
   const phase = useFlight((s) => s.phase);
   const target = useFlight((s) => s.target);
@@ -212,7 +214,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
             onAnimationEnd={() => setRevealed(false)}
             className="body-name-reveal -translate-y-10 whitespace-nowrap rounded-full border border-sky-300/30 bg-black/60 px-3.5 py-1.5 text-[13px] font-light uppercase tracking-[0.28em] text-white shadow-lg shadow-black/40 backdrop-blur-md"
           >
-            {record.name}
+            {localizedBodyName(language, id, record.name)}
           </div>
         </Html>
       )}
