@@ -15,6 +15,7 @@ import { SatellitePanel } from './ui/SatellitePanel';
 import { SatelliteInfo } from './ui/SatelliteInfo';
 import { useSatelliteSelection } from './scene/satelliteSelection';
 import { useSimTime } from './scene/useSimTime';
+import { useViewSettings } from './scene/viewSettings';
 import { SATELLITE_GROUPS, useSatelliteGroups } from './scene/satelliteGroups';
 import { readShareState, replaceShareState } from './lib/urlState';
 
@@ -31,6 +32,7 @@ function App() {
   const [entered, setEntered] = useState(false);
   const returnToOverview = useFlight((s) => s.returnToOverview);
   const satellite = useSatelliteSelection((s) => s.selected);
+  const mode = useViewSettings((s) => s.mode);
 
   // A shared link is a specific moment. Restoring it once on load applies the
   // instant, rate and constellations it carries, so the link opens on the sky
@@ -109,7 +111,7 @@ function App() {
               the world it is orbiting, not alongside it. */}
           {satellite ? <SatelliteInfo /> : <InfoPanel />}
           <EventsPanel />
-          <SpaceWeatherPanel />
+          {mode === 'now' && <SpaceWeatherPanel />}
           <ObserverPanel />
           <LaplacePanel />
           <SatellitePanel />

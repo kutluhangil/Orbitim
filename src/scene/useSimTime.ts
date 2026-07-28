@@ -9,6 +9,7 @@ interface SimTimeState {
   advance: (realSeconds: number) => void;
   setDate: (date: Date) => void;
   setMultiplier: (multiplier: number) => void;
+  setPlaying: (playing: boolean) => void;
   togglePlaying: () => void;
   resetToNow: () => void;
 }
@@ -27,6 +28,7 @@ export const useSimTime = create<SimTimeState>((set, get) => ({
   },
   setDate: (date) => set({ date }),
   setMultiplier: (multiplier) => set({ multiplier }),
+  setPlaying: (playing) => set({ playing }),
   togglePlaying: () => set((s) => ({ playing: !s.playing })),
   resetToNow: () => set({ date: new Date() })
 }));

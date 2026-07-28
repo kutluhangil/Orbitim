@@ -10,6 +10,7 @@ import { useViewSettings } from '../scene/viewSettings';
 import { useSiteSelection } from '../scene/siteSelection';
 import { useIsCompact } from './useMediaQuery';
 import { BodyDisc } from './BodyDisc';
+import { ObservationCard } from './ObservationCard';
 import { Row } from './Row';
 
 function formatKm(km: number): string {
@@ -44,6 +45,7 @@ export function InfoPanel() {
   const selectedSiteId = useSiteSelection((s) => s.selected);
   const selectSite = useSiteSelection((s) => s.select);
   const scientific = useViewSettings((s) => s.mode === 'scientific');
+  const nowMode = useViewSettings((s) => s.mode === 'now');
   const [open, setOpen] = useState(!compact);
   const [, setTick] = useState(0);
 
@@ -136,6 +138,8 @@ export function InfoPanel() {
             </dl>
           </section>
         )}
+
+        {nowMode && (target === 'earth' || target === 'sun') && <ObservationCard target={target} />}
 
         <section className="mb-5">
           <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">Fact sheet</h3>

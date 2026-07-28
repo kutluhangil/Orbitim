@@ -18,7 +18,12 @@ export function ExperienceModeControl() {
 
   const select = (next: ExperienceMode) => {
     setMode(next);
-    if (next === 'now') useSimTime.getState().resetToNow();
+    if (next === 'now') {
+      const time = useSimTime.getState();
+      time.setMultiplier(1);
+      time.setPlaying(true);
+      time.resetToNow();
+    }
   };
 
   return (

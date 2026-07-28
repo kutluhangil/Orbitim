@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added explicit NASA EPIC Earth and SDO AIA 171 observation cards to Now mode, preserving the difference between EPIC capture time and an SDO asset publication timestamp.
 - Added physical-space Solar Illumination inputs, scientific contrast mode, and an on-scene Explore/Scientific/Now mode selector so visual scale compression no longer dictates eclipse geometry.
 - Strengthened Earth's independently advecting cloud shell by treating the NASA-derived grayscale plate as linear density instead of double-attenuated colour, and removed the Sun's meridian seam with periodic spherical noise, wrapped sampling and a brighter structured corona.
 - Moved landing and rover exploration details out of the fixed body dossier into a viewport-safe, accessible card anchored beside the selected surface marker.
