@@ -77,6 +77,20 @@ adları, kuyruklu yıldız + minör cisim adları); desktop sol rail de light mo
 koyu slate'e geçiyor — mobilde kendi koyu şeridi olduğu için orada beyaz kalıyor.
 Kontrol pill'leri her iki temada koyu: enstrüman kromu, iki zeminde de okunur.
 
+## Faz 11 — Gerçekçilik, erişim ve veri güvence katmanı
+
+- Otuz gök cismi ve on dokuz doğal uydu; seçili uydular için yakın görünümde
+  NASA 3D Resources GLB modelleri. Modeller yalnızca ziyaret edilen uyduda
+  yüklenir; sistem görünümü gereksiz GPU/ağ maliyeti taşımaz.
+- Dünya için yüzeyden ayrık, simülasyon zamanıyla hareket eden bulut kabuğu;
+  Güneş, gezegen terminatörleri ve halka gölgeleri aynı aydınlatma yaklaşımında.
+- Mobilde çakışan üst araçlar tek erişilebilir sahne kokpitinde birleştirildi:
+  mod, yörünge, gökyüzü çizgileri, tema, dil ve paylaşım tek noktada.
+- İngilizce/Türkçe geçişi olay, uzay havası, yerel gökyüzü ve uydu dosyalarına
+  uzatıldı; tarih ve sayılar seçilen yerel ayara göre biçimlenir.
+- JPL Horizons ve CNEOS Vercel rotaları artık ağ, HTTP ve bozuk JSON durumlarını
+  açık 502 tanılarıyla verir; NASA DONKI anahtarı yalnızca Vercel ortamında tutulur.
+
 ---
 
 ## Notlar

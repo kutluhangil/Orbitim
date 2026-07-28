@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a Playwright mobile regression suite for the consolidated scene cockpit, TR language change and Earth-to-Moon child dock, and updated project documentation to reflect the current body count and Vercel data routes.
 - Localized the live science, observer, event and satellite panels including Turkish date/number formatting, and made JPL route failures return explicit invalid-JSON or transport diagnostics.
 - Deferred NASA GLB moon model parsing until a visitor approaches that moon, preserving the source-backed close render while reducing overview network and GPU pressure.
 - Replaced the overlapping mobile top chrome with one accessible scene-control cockpit for modes, layers, theme, language and sharing.

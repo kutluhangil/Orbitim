@@ -16,10 +16,11 @@
 
 ## ✦ What is Orbitim?
 
-**Orbitim** is a real-time 3D solar system that runs entirely in the browser. Eighteen
-bodies — the Sun, eight planets and nine major moons — are placed by orbital mechanics
-rather than by hand, for the exact instant on the clock. Fly to any of them, scrub the
-clock forward a decade, and the geometry you see is the geometry the sky will hold.
+**Orbitim** is a real-time 3D solar system with thirty rendered bodies: the Sun, eight
+planets, Ceres and Pluto, plus nineteen natural satellites. They are placed by orbital
+mechanics rather than by hand, for the exact instant on the clock. Fly to any of them,
+scrub the clock forward a decade, and the geometry you see is the geometry the sky will
+hold.
 
 Beyond the planets, the system is filled in with the objects that actually share it: five
 comets riding their real orbits with a tail that only unfurls near the Sun, the named
@@ -32,9 +33,11 @@ OneWeb, Iridium NEXT, geostationary, weather, science, Earth observation, the br
 objects, and the four great orbital-debris clouds — Iridium 33, Cosmos 2251, Fengyun 1C
 and Cosmos 1408.
 
-**No backend. No API keys. No accounts.** Static files, a fetch for orbital elements, and
-your GPU. Any view is a link: the Share button copies the exact instant, rate and
-constellations so someone else opens on the same sky.
+**No accounts and no browser-exposed keys.** The scene, ephemeris and satellite propagation
+run in the browser. Small Vercel routes proxy JPL Horizons/CNEOS requests and NASA DONKI
+reports; the optional `NASA_API_KEY` is stored only in the Vercel project environment.
+Any view is a link: the Share button copies the exact instant, rate and constellations so
+someone else opens on the same sky.
 
 > **Nothing on screen is simulated telemetry.** Where a value is undefined for a body,
 > the panel says so instead of inventing one.
@@ -58,6 +61,9 @@ constellations so someone else opens on the same sky.
 | ✨ **Deep sky** | A dimmed Milky Way plate behind 9,000 deterministic point stars, coloured across the main sequence |
 | 📊 **Live dossier** | Distance, light travel time, apparent magnitude, illuminated fraction — all computed at render time from the same ephemeris |
 | 🖼️ **8K on approach** | 2K maps for everything visible, an 8K map only for the body you are flying to, released when you leave |
+| 🌗 **Source-backed moon visits** | Published NASA 3D Resources models for selected moons mount only during close inspection; moon docks keep the system rail legible |
+| 🌍 **Independent cloud shell** | Earth carries a raised, separately advecting cloud layer instead of a cloud texture painted into the surface |
+| 🇹🇷 **English / Türkçe** | UI controls, live science panels, observer readouts and satellite dossiers switch language instantly without changing the shared sky |
 | 📐 **Honest geometry** | Distances are log-compressed to fit one screen; directions are never distorted, so conjunctions stay truthful |
 
 ---
@@ -71,7 +77,9 @@ constellations so someone else opens on the same sky.
 | Satellite and debris positions | CelesTrak TLEs, SGP4-propagated in the browser each frame |
 | Comet, dwarf-planet and asteroid orbits | JPL Small-Body Database osculating elements, two-body propagated (checked against astronomy-engine's Pluto) |
 | Body constants (mass, gravity, day length, atmosphere) | [NASA Planetary Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/) |
-| Surface imagery | [Solar System Scope](https://www.solarsystemscope.com/textures/), CC BY 4.0, NASA-derived — see `public/textures/ATTRIBUTION.md` |
+| Surface imagery and close moon models | Solar System Scope CC BY 4.0 maps plus NASA/USGS/JPL public-domain products; individual provenance is in `public/textures/ATTRIBUTION.md` |
+| JPL live vectors and NEO approaches | Vercel proxy routes to [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) and [JPL CNEOS CAD](https://ssd-api.jpl.nasa.gov/cad.api), with explicit upstream-error diagnostics |
+| Solar-weather reports | NASA DONKI via a Vercel route; requires `NASA_API_KEY` only in the Vercel environment |
 
 ---
 
@@ -101,8 +109,8 @@ State           →  zustand (flight state machine, satellite groups)
 Astronomy       →  astronomy-engine (VSOP87, lunar theory, magnitudes, phase)
 Orbits          →  satellite.js (SGP4/SDP4 from TLE)
 Build           →  Vite 8 · oxlint
-Data            →  CelesTrak element sets · NASA Planetary Fact Sheet · Solar System Scope textures
-Backend         →  none
+Data            →  CelesTrak element sets · NASA/JPL/USGS imagery · NASA Planetary Fact Sheet · JPL Horizons/CNEOS · NASA DONKI
+Server routes   →  Vercel Functions for JPL and NASA requests; NASA key remains server-side
 ```
 
 ---
@@ -114,7 +122,7 @@ types, so it can be verified without rendering anything.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                        ORBITIM (browser only)                     │
+│                   ORBITIM (browser-rendered scene)                │
 │                                                                   │
 │  ┌────────────────────┐   ┌────────────────┐   ┌───────────────┐  │
 │  │ src/lib/ephemeris/ │   │ src/lib/scale  │   │ src/data/     │  │
@@ -138,6 +146,12 @@ types, so it can be verified without rendering anything.
                     ┌───────────▼────────────┐
                     │ CelesTrak element sets  │
                     │ (CDN mirror → direct)   │
+                    └────────────────────────┘
+                                │ optional server-side observed data
+                    ┌───────────▼────────────┐
+                    │ Vercel API routes       │
+                    │ JPL Horizons · CNEOS    │
+                    │ NASA DONKI              │
                     └────────────────────────┘
 ```
 
@@ -170,7 +184,9 @@ npm run preview
 npm run lint      # oxlint
 ```
 
-No environment variables, no `.env`, nothing to provision.
+For the core scene, no environment variable is needed. To enable live NASA DONKI reports
+in a Vercel deployment, set `NASA_API_KEY` in the Vercel project environment; never place
+it in a `VITE_` variable or commit it to the repository.
 
 ---
 
@@ -179,6 +195,7 @@ No environment variables, no `.env`, nothing to provision.
 | Concern | Approach |
 |---------|----------|
 | **Texture memory** | 2K everywhere, 8K only for the flight target, disposed on departure |
+| **Moon geometry** | NASA GLB moon assets mount only for the current close target; the overview keeps lightweight physical markers |
 | **Bundle** | `three`, `astronomy-engine` and `satellite.js` split into their own vendor chunks — app rebuilds don't invalidate ~1.3 MB of cached script |
 | **Star field** | One `Points` draw call for 9,000 stars, deterministic hash instead of `Math.random`, no per-frame allocation |
 | **Satellites** | One points buffer per group, written in place each frame — a whole constellation is a single draw call; groups are opt-in and counted |
@@ -197,7 +214,7 @@ not covered by the MIT grant — see `public/textures/ATTRIBUTION.md`.
 
 Built with three.js · React Three Fiber · astronomy-engine · satellite.js
 
-*Real positions, real elements, no backend. If Orbitim shows you something you didn't
-expect to be true, drop the repo a ⭐*
+*Real positions, real elements and explicit data provenance. If Orbitim shows you
+something you didn't expect to be true, drop the repo a ⭐*
 
 </div>
