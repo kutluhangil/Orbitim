@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added hover, keyboard and touch-accessible child moon docks above their parent worlds, so every currently rendered natural satellite can be visited directly without overloading the primary solar-system rail.
 - Added an instant English/Türkçe interface switch across the entry experience, time controls, body dock, accessible planet labels, dossiers and primary science controls; source agency names and scientific units remain verbatim.
 - Rebalanced the Sun as an HDR emitter with a structured close-range corona and focus-aware bloom, preserving photospheric texture while giving the scene a clearly luminous solar source.
 - Added a close-view, physically scaled Mars elevation mesh from the global NASA PDS MGS MOLA median-topography grid, with its source, coverage and measurement period visible in Scientific mode.
