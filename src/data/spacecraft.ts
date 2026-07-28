@@ -52,6 +52,13 @@ export interface Spacecraft {
   model: SpacecraftModel;
 }
 
+/** A single heliocentric vector returned by JPL Horizons for an exact epoch. */
+export interface SpacecraftLiveState {
+  epochMs: number;
+  position: EclipticVec;
+  source: string;
+}
+
 export const SPACECRAFT: readonly Spacecraft[] = [
   {
     id: 'voyager1', name: 'Voyager 1', agency: 'NASA', launched: 1977, color: '#f0cf6a',
@@ -100,7 +107,10 @@ export const SPACECRAFT: readonly Spacecraft[] = [
 ];
 
 /** Live heliocentric position (EQJ, AU) of a craft at an instant. */
-export function spacecraftPosition(craft: Spacecraft, date: Date): EclipticVec {
+export function spacecraftPosition(craft: Spacecraft, date: Date, live?: SpacecraftLiveState): EclipticVec {
+  // A vector is exact only for its supplied epoch. Do not extrapolate it or imply
+  // it remains live after the simulation clock moves away from that instant.
+  if (live && Math.abs(live.epochMs - date.getTime()) <= 60_000) return live.position;
   const m = craft.model;
   if (m.kind === 'coast') {
     const days = (date.getTime() - COAST_EPOCH_MS) / 86400000;

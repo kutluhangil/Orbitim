@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added JPL Horizons-backed spacecraft vectors and a JPL CNEOS close-approach feed through constrained Vercel API routes.
 - Added an on-demand Web Worker that finds the next geometry-based Starlink rises above a 10° local horizon without blocking the WebGL scene.
 - Added explicit TLE provenance, fetch age and element-epoch age to satellite and observer predictions.
 - Added a local-sky observer mode with topocentric Sun, Moon and planet alt/az plus an explicit-location ISS pass prediction.

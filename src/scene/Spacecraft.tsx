@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
@@ -7,6 +7,7 @@ import { heliocentricToScene } from '../lib/scale';
 import { useFlight } from '../flight/useFlight';
 import { useSimTime } from './useSimTime';
 import { useViewSettings } from './viewSettings';
+import { useSpacecraftState } from './spacecraftState';
 
 /**
  * Live deep-space craft — the Voyagers, New Horizons, Parker and JWST — placed
@@ -40,6 +41,14 @@ function getRingTexture(): THREE.Texture {
 
 export function Spacecraft() {
   const ring = useMemo(getRingTexture, []);
+  const refresh = useSpacecraftState((state) => state.refresh);
+
+  useEffect(() => {
+    void refresh(useSimTime.getState().date).catch((cause) => {
+      console.error('JPL Horizons live-state refresh failed.', cause);
+    });
+  }, [refresh]);
+
   return (
     <group>
       {SPACECRAFT.map((craft) => (
@@ -55,6 +64,7 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
   const orbitsVisible = useViewSettings((s) => s.orbitsVisible);
   const light = useViewSettings((s) => s.theme === 'light');
   const phase = useFlight((s) => s.phase);
+  const live = useSpacecraftState((state) => state.states[craft.id]);
 
   const orbitPoints = useMemo(() => {
     const sample = spacecraftOrbit(craft);
@@ -67,7 +77,7 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
 
   useFrame(() => {
     if (!group.current) return;
-    const position = spacecraftPosition(craft, useSimTime.getState().date);
+    const position = spacecraftPosition(craft, useSimTime.getState().date, live);
     const [x, y, z] = heliocentricToScene(position);
     group.current.position.set(x, y, z);
     if (distance.current) {
