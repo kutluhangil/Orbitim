@@ -42,10 +42,12 @@ const SHELL_EXTENT = 5;
 
 const VERTEX = /* glsl */ `
   varying vec3 vPositionView;
+  varying vec3 vPolarAxisView;
 
   void main() {
     vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
     vPositionView = viewPosition.xyz;
+    vPolarAxisView = normalize(normalMatrix * vec3(0.0, 1.0, 0.0));
     gl_Position = projectionMatrix * viewPosition;
   }
 `;
@@ -67,11 +69,13 @@ const FRAGMENT = /* glsl */ `
   uniform vec3 uColor;
   uniform float uStrength;
   uniform float uPlanetRadius;
+  uniform float uPolarRatio;
   uniform float uScaleHeight;
   uniform vec3 uCenterView;
   uniform vec3 uSunDirectionView;
 
   varying vec3 vPositionView;
+  varying vec3 vPolarAxisView;
 
   void main() {
     // The camera is the origin in view space, so the ray to this fragment is
@@ -79,7 +83,16 @@ const FRAGMENT = /* glsl */ `
     vec3 ray = normalize(vPositionView);
     float along = dot(uCenterView, ray);
     vec3 closest = ray * along;
-    float altitude = max(length(uCenterView - closest) - uPlanetRadius, 0.0);
+    vec3 radial = closest - uCenterView;
+    vec3 radialDirection = normalize(radial);
+    float polar = dot(radialDirection, normalize(vPolarAxisView));
+    float polarWeight = polar * polar;
+    // Radius of an oblate spheroid in this direction. It reduces to the
+    // spherical radius when uPolarRatio is 1.
+    float surfaceRadius = uPlanetRadius / sqrt(
+      max(1.0 - polarWeight + polarWeight / (uPolarRatio * uPolarRatio), 1e-6)
+    );
+    float altitude = max(length(radial) - surfaceRadius, 0.0);
     float density = exp(-altitude / uScaleHeight);
 
     // Lit at the altitude the sight line grazes, not at the shell's own surface:
@@ -96,26 +109,33 @@ const FRAGMENT = /* glsl */ `
 interface AtmosphereProps {
   profile: AtmosphereProfile;
   radius: number;
+  /** Polar radius divided by equatorial radius. */
+  polarRatio?: number;
   /** World position of the body, used to derive the sun direction. */
   worldPosition: THREE.Vector3;
 }
 
-export function Atmosphere({ profile, radius, worldPosition }: AtmosphereProps) {
+export function Atmosphere({ profile, radius, polarRatio = 1, worldPosition }: AtmosphereProps) {
   const material = useRef<THREE.ShaderMaterial>(null);
   const sunDirection = useMemo(() => new THREE.Vector3(), []);
   const center = useMemo(() => new THREE.Vector3(), []);
   const scaleHeight = radius * profile.scaleHeight;
+  const shellRadius = radius + scaleHeight * SHELL_EXTENT;
+  // Preserve the same atmospheric height in kilometres above equator and pole
+  // while fitting the shell to the body's measured ellipsoid.
+  const shellPolarRatio = (radius * polarRatio + scaleHeight * SHELL_EXTENT) / shellRadius;
 
   const uniforms = useMemo(
     () => ({
       uColor: { value: new THREE.Color(profile.color) },
       uStrength: { value: profile.strength },
       uPlanetRadius: { value: radius },
+      uPolarRatio: { value: polarRatio },
       uScaleHeight: { value: scaleHeight },
       uCenterView: { value: new THREE.Vector3() },
       uSunDirectionView: { value: new THREE.Vector3(0, 0, 1) }
     }),
-    [profile, radius, scaleHeight]
+    [profile, radius, polarRatio, scaleHeight]
   );
 
   useFrame(({ camera }) => {
@@ -130,8 +150,8 @@ export function Atmosphere({ profile, radius, worldPosition }: AtmosphereProps) 
   });
 
   return (
-    <mesh>
-      <sphereGeometry args={[radius * (1 + profile.scaleHeight * SHELL_EXTENT), 64, 32]} />
+    <mesh scale={[1, shellPolarRatio, 1]}>
+      <sphereGeometry args={[shellRadius, 64, 32]} />
       <shaderMaterial
         ref={material}
         uniforms={uniforms}

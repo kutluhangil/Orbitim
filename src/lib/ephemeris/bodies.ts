@@ -23,6 +23,8 @@ export interface BodyRecord {
   parent?: BodyId;
   /** equatorial radius, km */
   radiusKm: number;
+  /** Polar radius in km where rotational flattening is visually significant. */
+  polarRadiusKm?: number;
   /** Full long, intermediate and short axes in km for an appreciably irregular body. */
   shapeAxesKm?: readonly [number, number, number];
   /** obliquity of the rotation axis to its orbital plane, degrees */
@@ -51,17 +53,20 @@ const RECORDS: BodyRecord[] = [
   { id: 'sun', name: 'Sun', kind: 'star', engineBody: Body.Sun, radiusKm: 695700, axialTiltDeg: 7.25, rotationHours: 609.12, color: '#ffd27a' },
   { id: 'mercury', name: 'Mercury', kind: 'planet', engineBody: Body.Mercury, radiusKm: 2439.7, axialTiltDeg: 0.034, rotationHours: 1407.6, color: '#a8a29e' },
   { id: 'venus', name: 'Venus', kind: 'planet', engineBody: Body.Venus, radiusKm: 6051.8, axialTiltDeg: 177.36, rotationHours: -5832.5, color: '#e7c68a' },
-  { id: 'earth', name: 'Earth', kind: 'planet', engineBody: Body.Earth, radiusKm: 6378.1, axialTiltDeg: 23.44, rotationHours: 23.9345, color: '#6fb3e0' },
-  { id: 'mars', name: 'Mars', kind: 'planet', engineBody: Body.Mars, radiusKm: 3396.2, axialTiltDeg: 25.19, rotationHours: 24.6229, color: '#d1603d' },
+  { id: 'earth', name: 'Earth', kind: 'planet', engineBody: Body.Earth, radiusKm: 6378.1, polarRadiusKm: 6356.8, axialTiltDeg: 23.44, rotationHours: 23.9345, color: '#6fb3e0' },
+  { id: 'mars', name: 'Mars', kind: 'planet', engineBody: Body.Mars, radiusKm: 3396.2, polarRadiusKm: 3376.2, axialTiltDeg: 25.19, rotationHours: 24.6229, color: '#d1603d' },
 
   // Ceres orbits within the asteroid belt; a dwarf planet carried by its real
   // heliocentric elements rather than a shipped theory.
   { id: 'ceres', name: 'Ceres', kind: 'dwarf', engineBody: null, radiusKm: 469.7, axialTiltDeg: 4, rotationHours: 9.074, elements: elementsAtEpoch({ semiMajorAU: 2.7658, eccentricity: 0.0785, inclinationDeg: 10.593, ascendingNodeDeg: 80.393, argPerihelionDeg: 73.597, meanAnomalyDeg: 287.42 }), color: '#9a9086' },
 
-  { id: 'jupiter', name: 'Jupiter', kind: 'planet', engineBody: Body.Jupiter, radiusKm: 71492, axialTiltDeg: 3.13, rotationHours: 9.925, color: '#d9a066' },
-  { id: 'saturn', name: 'Saturn', kind: 'planet', engineBody: Body.Saturn, radiusKm: 60268, axialTiltDeg: 26.73, rotationHours: 10.656, rings: { innerRadii: 1.24, outerRadii: 2.27 }, color: '#e3d1a0' },
-  { id: 'uranus', name: 'Uranus', kind: 'planet', engineBody: Body.Uranus, radiusKm: 25559, axialTiltDeg: 97.77, rotationHours: -17.24, rings: { innerRadii: 1.64, outerRadii: 2.0 }, color: '#9fd8e0' },
-  { id: 'neptune', name: 'Neptune', kind: 'planet', engineBody: Body.Neptune, radiusKm: 24764, axialTiltDeg: 28.32, rotationHours: 16.11, color: '#5b7fe0' },
+  // Juno radio occultations published in 2026 narrowed Jupiter's equatorial
+  // radius by 4 km from the previous adopted figure. The polar figure retains
+  // the same reference level until the full revised ellipsoid is standardized.
+  { id: 'jupiter', name: 'Jupiter', kind: 'planet', engineBody: Body.Jupiter, radiusKm: 71488, polarRadiusKm: 66854, axialTiltDeg: 3.13, rotationHours: 9.925, color: '#d9a066' },
+  { id: 'saturn', name: 'Saturn', kind: 'planet', engineBody: Body.Saturn, radiusKm: 60268, polarRadiusKm: 54364, axialTiltDeg: 26.73, rotationHours: 10.656, rings: { innerRadii: 1.24, outerRadii: 2.27 }, color: '#e3d1a0' },
+  { id: 'uranus', name: 'Uranus', kind: 'planet', engineBody: Body.Uranus, radiusKm: 25559, polarRadiusKm: 24973, axialTiltDeg: 97.77, rotationHours: -17.24, rings: { innerRadii: 1.64, outerRadii: 2.0 }, color: '#9fd8e0' },
+  { id: 'neptune', name: 'Neptune', kind: 'planet', engineBody: Body.Neptune, radiusKm: 24764, polarRadiusKm: 24341, axialTiltDeg: 28.32, rotationHours: 16.11, color: '#5b7fe0' },
 
   // Pluto has an astronomy-engine theory; its moon Charon follows in the moon
   // block below (parent must precede child for the position update).

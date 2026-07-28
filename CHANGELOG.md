@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added measured polar flattening and matching ellipsoidal atmospheres for Earth, Mars and the giant planets, updated Jupiter's equatorial radius from 2026 Juno results, and made Venus's visible cloud deck super-rotate on its observed four-day period.
 - Prioritized and deduplicated near-surface texture streaming, raised anisotropic filtering, and removed false normals derived from baked image brightness so 8K Moon and rocky-world maps stay clean at close range.
 - Realigned the desktop body rail, added simulation-driven Earth cloud advection and differential ring motion, and rebalanced the Sun into a bright structured photosphere with a warmer corona.
 - Moved NASA DONKI requests behind a cached Vercel route so a private server key is never exposed and quota failures are explicit.

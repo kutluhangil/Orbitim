@@ -5,6 +5,7 @@ import { getBodyRecord, type BodyId } from './bodies';
 /** J2000.0 epoch, the reference instant for all spin angles. */
 export const J2000_MS = Date.UTC(2000, 0, 1, 12, 0, 0);
 const EARTH_CLOUD_DRIFT_DAYS = 12.5;
+const VENUS_CLOUD_ROTATION_HOURS = -96;
 
 export interface EquatorialDirection {
   x: number;
@@ -27,6 +28,17 @@ export function getSpinAngle(id: BodyId, date: Date): number {
   const elapsedHours = (date.getTime() - J2000_MS) / 3600000;
   const turns = elapsedHours / rotationHours;
   return turns * 2 * Math.PI;
+}
+
+/**
+ * Rotation of the layer visible from space. It matches the body's sidereal spin
+ * except on Venus, whose opaque texture represents the cloud tops rather than
+ * the solid surface. Those clouds circle retrograde in roughly four Earth days.
+ */
+export function getVisibleSurfaceAngle(id: BodyId, date: Date): number {
+  if (id !== 'venus') return getSpinAngle(id, date);
+  const elapsedHours = (date.getTime() - J2000_MS) / 3_600_000;
+  return (elapsedHours / VENUS_CLOUD_ROTATION_HOURS) * 2 * Math.PI;
 }
 
 /**

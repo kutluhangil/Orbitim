@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { getBodyRecord, type BodyId } from '../lib/ephemeris/bodies';
-import { getEarthCloudAngle, getSpinAngle, getSpinAxis } from '../lib/ephemeris/rotation';
+import { getEarthCloudAngle, getSpinAxis, getVisibleSurfaceAngle } from '../lib/ephemeris/rotation';
 import { useBodyTexture } from '../lib/textures/useBodyTexture';
 import { lodFor, useFlight } from '../flight/useFlight';
 import { useSimTime } from './useSimTime';
@@ -92,16 +92,17 @@ export function Body({ id, registry, onSelect }: BodyProps) {
   );
 
   const radius = sceneRadiusOf(id);
-  // Most bodies are close enough to spherical at this scale. The Martian moons
-  // are not: preserve their measured long/intermediate/short axis ratios rather
-  // than making their transit and limb geometry deceptively round.
+  // Irregular moons keep all three measured axes. Rapidly rotating planets keep
+  // their equatorial bulge rather than being forced into a perfect sphere.
   const shapeScale = record.shapeAxesKm
     ? ([
         record.shapeAxesKm[0] / (2 * record.radiusKm),
         record.shapeAxesKm[1] / (2 * record.radiusKm),
         record.shapeAxesKm[2] / (2 * record.radiusKm)
       ] as const)
-    : undefined;
+    : record.polarRadiusKm
+      ? ([1, record.polarRadiusKm / record.radiusKm, 1] as const)
+      : undefined;
   const isStar = record.kind === 'star';
   const atmosphere = ATMOSPHERES[id];
   const worldPosition = registry.get(id)!;
@@ -117,7 +118,7 @@ export function Body({ id, registry, onSelect }: BodyProps) {
     // with the physical pole before applying the prime-meridian spin below.
     pole.set(axis.x, axis.z, -axis.y).normalize();
     if (group.current) group.current.quaternion.setFromUnitVectors(north, pole);
-    const spin = getSpinAngle(id, date);
+    const spin = getVisibleSurfaceAngle(id, date);
     if (surface.current) surface.current.rotation.y = spin;
     if (clouds.current) clouds.current.rotation.y = getEarthCloudAngle(date);
   });
@@ -212,7 +213,14 @@ export function Body({ id, registry, onSelect }: BodyProps) {
         </mesh>
       )}
 
-      {atmosphere && <Atmosphere profile={atmosphere} radius={radius} worldPosition={worldPosition} />}
+      {atmosphere && (
+        <Atmosphere
+          profile={atmosphere}
+          radius={radius}
+          polarRatio={record.polarRadiusKm ? record.polarRadiusKm / record.radiusKm : 1}
+          worldPosition={worldPosition}
+        />
+      )}
 
       {record.rings && (
         <Rings record={record} radius={radius} map={textures.ringMap} worldPosition={worldPosition} />
