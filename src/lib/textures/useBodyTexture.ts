@@ -100,7 +100,10 @@ export function useBodyTexture(id: BodyId, requestedLod: Lod): BodyTextures {
         set.emissiveMap && graphicsTier === 'high'
           ? load(set.emissiveMap[level], THREE.SRGBColorSpace)
           : Promise.resolve(null),
-        set.cloudMap && level === 'near' ? load(set.cloudMap, THREE.SRGBColorSpace) : Promise.resolve(null),
+        // The cloud plate is a density field used by alpha, displacement and
+        // shadow samplers, not an albedo image. sRGB decoding would square away
+        // the thin systems and make most of the shell appear transparent.
+        set.cloudMap && level === 'near' ? load(set.cloudMap, THREE.NoColorSpace) : Promise.resolve(null),
         set.ringMap ? load(set.ringMap, THREE.SRGBColorSpace) : Promise.resolve(null),
         // A roughness mask is data, not colour, so it loads in linear space. Held
         // to the near level like the cloud shell — the glint is only legible from

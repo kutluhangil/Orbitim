@@ -18,10 +18,10 @@ function createGlowTexture(): THREE.Texture {
   if (!context) throw new Error('2D canvas context unavailable for the Sun glow texture');
 
   const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  gradient.addColorStop(0, 'rgba(255,232,178,1)');
-  gradient.addColorStop(0.16, 'rgba(255,196,94,0.62)');
-  gradient.addColorStop(0.34, 'rgba(255,145,44,0.16)');
-  gradient.addColorStop(0.6, 'rgba(255,116,35,0.025)');
+  gradient.addColorStop(0, 'rgba(255,241,204,1)');
+  gradient.addColorStop(0.16, 'rgba(255,205,112,0.72)');
+  gradient.addColorStop(0.34, 'rgba(255,151,49,0.2)');
+  gradient.addColorStop(0.6, 'rgba(255,116,35,0.035)');
   gradient.addColorStop(1, 'rgba(255,110,30,0)');
 
   context.fillStyle = gradient;
@@ -54,9 +54,9 @@ export function SunGlow({ radius }: { radius: number }) {
       // out; it fades as the camera enters the region it is meant to suggest.
       const distance = camera.position.distanceTo(corona.current.getWorldPosition(scratch));
       const material = corona.current.material as THREE.SpriteMaterial;
-      material.opacity = (0.16 + response.current * 0.12) * THREE.MathUtils.smoothstep(distance / radius, 3.5, 9.0);
+      material.opacity = (0.2 + response.current * 0.14) * THREE.MathUtils.smoothstep(distance / radius, 3.5, 9.0);
     }
-    if (inner.current) inner.current.opacity = 0.9 + response.current * 0.08 + Math.sin(t * 0.33) * pulseAmplitude;
+    if (inner.current) inner.current.opacity = 0.98 + response.current * 0.1 + Math.sin(t * 0.33) * pulseAmplitude;
   });
 
   return (
@@ -67,7 +67,7 @@ export function SunGlow({ radius }: { radius: number }) {
           map={texture}
           blending={THREE.AdditiveBlending}
           transparent
-          opacity={0.9}
+          opacity={0.98}
           depthWrite={false}
           toneMapped={false}
         />
@@ -77,7 +77,7 @@ export function SunGlow({ radius }: { radius: number }) {
           map={texture}
           blending={THREE.AdditiveBlending}
           transparent
-          opacity={0.16}
+          opacity={0.2}
           depthWrite={false}
           toneMapped={false}
         />

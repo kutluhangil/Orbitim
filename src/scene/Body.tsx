@@ -208,18 +208,17 @@ export function Body({ id, registry, onSelect }: BodyProps) {
               SEGMENTS[lod] / 2
             ]}
           />
-          {/* The grayscale plate drives both transparency and elevation. Clear
-              pixels are discarded; dense systems rise furthest from the base
-              shell and catch the stock physical light before the custom
-              terminator/eclipsing pass is applied. */}
+          {/* The grayscale plate is density, not colour. Feeding it to both the
+              albedo and alpha slots attenuates thin clouds twice, so it only
+              drives transparency and elevation while sunlight shades a clean
+              white water-ice albedo. */}
           <meshStandardMaterial
             key={textures.cloudMap.uuid}
-            map={textures.cloudMap}
             alphaMap={textures.cloudMap}
-            alphaTest={0.025}
+            alphaTest={0.02}
             transparent
-            opacity={0.9}
-            color="#f7fbff"
+            opacity={0.96}
+            color="#ffffff"
             roughness={1}
             metalness={0}
             displacementMap={textures.cloudMap}
