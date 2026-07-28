@@ -1,4 +1,5 @@
 import type { EquatorialVec } from '../lib/ephemeris/positions';
+import { readApiJson } from './readApiJson';
 
 export interface HorizonsState {
   target: string;
@@ -18,7 +19,7 @@ interface HorizonsPayload {
 
 export async function fetchHorizonsState(target: string, at: Date): Promise<HorizonsState> {
   const response = await fetch(`/api/horizons?target=${encodeURIComponent(target)}&at=${encodeURIComponent(at.toISOString())}`);
-  const payload = await response.json() as HorizonsPayload;
+  const payload = await readApiJson<HorizonsPayload>(response, 'JPL Horizons endpoint');
   if (!response.ok) throw new Error(`${String(payload.error ?? 'Horizons request failed.')}${payload.detail ? ` ${String(payload.detail)}` : ''}`);
   if (typeof payload.target !== 'string' || typeof payload.at !== 'string' || !Array.isArray(payload.position) || payload.position.length !== 3 || !payload.position.every((value) => typeof value === 'number' && Number.isFinite(value)) || typeof payload.source !== 'string') {
     throw new Error('Horizons response did not contain a valid heliocentric state vector.');

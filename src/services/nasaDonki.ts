@@ -1,3 +1,5 @@
+import { readApiJson } from './readApiJson';
+
 interface NasaFlare {
   flrID?: string;
   peakTime?: string;
@@ -117,7 +119,7 @@ function toGeomagneticActivity(record: NasaGeomagneticStorm): GeomagneticActivit
 /** Fetches server-cached observed NASA DONKI reports without exposing the API key. */
 export async function fetchSpaceWeather(signal?: AbortSignal): Promise<SpaceWeatherSnapshot> {
   const response = await fetch('/api/space-weather', { signal });
-  const payload = await response.json() as DonkiPayload;
+  const payload = await readApiJson<DonkiPayload>(response, 'NASA solar-weather endpoint');
   if (!response.ok) throw new Error(`${String(payload.error ?? 'NASA solar weather request failed.')}${payload.detail ? ` ${String(payload.detail)}` : ''}`);
   if (!Array.isArray(payload.flares) || !Array.isArray(payload.cmes) || !Array.isArray(payload.storms) || typeof payload.fetchedAt !== 'string' || typeof payload.source !== 'string') {
     throw new Error('NASA solar weather response did not have the expected shape.');

@@ -182,11 +182,13 @@ npm run dev       # http://localhost:5173
 npm run build     # tsc -b && vite build
 npm run preview
 npm run lint      # oxlint
+npm run test:e2e  # Playwright mobile regression suite
 ```
 
 For the core scene, no environment variable is needed. To enable live NASA DONKI reports
 in a Vercel deployment, set `NASA_API_KEY` in the Vercel project environment; never place
-it in a `VITE_` variable or commit it to the repository.
+it in a `VITE_` variable or commit it to the repository. Local Vite does not run files in
+`api/`; use `vercel dev` when exercising JPL or NASA API routes locally.
 
 ---
 
