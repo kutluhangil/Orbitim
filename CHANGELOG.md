@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a silent, ephemeris-calculated event rail tied to the simulation clock, provenance labels for event and Horizons/CNEOS data, and a direct NASA Eyes DSN Now link instead of inferred station connections.
 - Added explicit NASA EPIC Earth and SDO AIA 171 observation cards to Now mode, preserving the difference between EPIC capture time and an SDO asset publication timestamp.
 - Added physical-space Solar Illumination inputs, scientific contrast mode, and an on-scene Explore/Scientific/Now mode selector so visual scale compression no longer dictates eclipse geometry.
 - Strengthened Earth's independently advecting cloud shell by treating the NASA-derived grayscale plate as linear density instead of double-attenuated colour, and removed the Sun's meridian seam with periodic spherical noise, wrapped sampling and a brighter structured corona.

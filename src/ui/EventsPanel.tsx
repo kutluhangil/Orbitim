@@ -5,7 +5,7 @@ import { useSimTime } from '../scene/useSimTime';
 import { useViewSettings } from '../scene/viewSettings';
 import { fetchNearApproaches, type NearApproach } from '../services/nearApproaches';
 import { useSpacecraftState } from '../scene/spacecraftState';
-import { sonifySkyEvent } from '../lib/audio/sonification';
+import { DataProvenanceBadge } from './DataProvenanceBadge';
 
 /**
  * The sky's calendar, shown in the overview where the right-hand column is free.
@@ -34,8 +34,6 @@ export function EventsPanel() {
   const [approaches, setApproaches] = useState<NearApproach[]>([]);
   const [approachSource, setApproachSource] = useState<string | null>(null);
   const [approachError, setApproachError] = useState<string | null>(null);
-  const [sonifying, setSonifying] = useState<string | null>(null);
-  const [sonificationError, setSonificationError] = useState<string | null>(null);
   const horizonsStatus = useSpacecraftState((state) => state.status);
   const horizonsUpdatedAt = useSpacecraftState((state) => state.updatedAt);
   const horizonsError = useSpacecraftState((state) => state.error);
@@ -85,29 +83,20 @@ export function EventsPanel() {
   const visitEvent = (event: SkyEvent) => {
     const time = useSimTime.getState();
     time.setDate(event.date);
-    if (time.playing) time.togglePlaying();
+    time.setPlaying(false);
     useFlight.getState().flyTo(event.focusBody);
-  };
-
-  const playEvent = async (event: SkyEvent) => {
-    setSonifying(event.id);
-    setSonificationError(null);
-    try {
-      await sonifySkyEvent(event, now);
-    } catch (cause) {
-      setSonificationError(`Event sonification unavailable: ${cause instanceof Error ? cause.message : String(cause)}`);
-    } finally {
-      setSonifying(null);
-    }
   };
 
   return (
     <aside
       className={`pointer-events-auto fixed inset-x-0 bottom-[var(--system-dock)] z-10 hidden max-h-[46dvh] overflow-y-auto rounded-t-2xl border-t px-4 pb-5 pt-4 backdrop-blur-xl [@media(min-height:560px)]:block md:inset-x-auto md:bottom-auto md:right-6 md:top-1/2 md:max-h-[80vh] md:w-[20rem] md:-translate-y-1/2 md:rounded-2xl md:border md:p-6 ${surface}`}
     >
-      <h2 className={`text-[10px] uppercase tracking-[0.28em] ${light ? 'text-sky-600/80' : 'text-sky-300/70'}`}>
-        The sky right now
-      </h2>
+      <header className="flex items-start justify-between gap-3">
+        <h2 className={`text-[10px] uppercase tracking-[0.28em] ${light ? 'text-sky-600/80' : 'text-sky-300/70'}`}>
+          The sky right now
+        </h2>
+        <DataProvenanceBadge kind="calculated">Ephemeris</DataProvenanceBadge>
+      </header>
 
       <div className="mt-4 flex items-center gap-3">
         <span className="text-3xl leading-none" aria-hidden>{moon.glyph}</span>
@@ -133,7 +122,6 @@ export function EventsPanel() {
                 <p className={`mt-1 text-[10px] leading-snug ${muted}`}>{eventNarrative(event)}</p>
                 <div className="mt-2 flex items-center gap-3">
                   <button type="button" onClick={() => visitEvent(event)} className={`text-[9px] uppercase tracking-[0.16em] ${light ? 'text-sky-700' : 'text-sky-200/80'}`}>Visit event</button>
-                  <button type="button" onClick={() => void playEvent(event)} disabled={sonifying !== null} className={`text-[9px] uppercase tracking-[0.16em] disabled:cursor-wait ${light ? 'text-slate-500' : 'text-white/45'}`}>{sonifying === event.id ? 'Playing…' : 'Hear data'}</button>
                 </div>
               </div>
               <div className="shrink-0 text-right">
@@ -144,12 +132,14 @@ export function EventsPanel() {
           );
         })}
       </ul>
-      {sonificationError && <p className="mt-3 text-[10px] leading-relaxed text-red-300/90">{sonificationError}</p>}
-      <p className={`mt-3 text-[10px] leading-relaxed ${muted}`}>Hear data maps days until the event to pitch and event class to pulse count. It is not an astronomical audio recording.</p>
+      <p className={`mt-3 text-[10px] leading-relaxed ${muted}`}>Event geometry is calculated from the simulation ephemeris for the UTC instant on the clock.</p>
 
       <div className={`mt-6 border-t pt-4 ${light ? 'border-slate-200' : 'border-white/8'}`}>
         <div className="flex items-center justify-between gap-2">
-          <h3 className={`text-[10px] uppercase tracking-[0.22em] ${light ? 'text-slate-400' : 'text-white/30'}`}>JPL trajectories</h3>
+          <div>
+            <h3 className={`text-[10px] uppercase tracking-[0.22em] ${light ? 'text-slate-400' : 'text-white/30'}`}>JPL trajectories</h3>
+            <div className="mt-1"><DataProvenanceBadge kind="calculated">Horizons</DataProvenanceBadge></div>
+          </div>
           <button type="button" onClick={refreshLiveVectors} disabled={horizonsStatus === 'loading'} className={`rounded-md border px-2 py-1 text-[9px] uppercase tracking-[0.16em] disabled:cursor-wait ${light ? 'border-slate-300 text-sky-700' : 'border-sky-300/25 text-sky-200/80'}`}>
             {horizonsStatus === 'loading' ? 'Loading…' : 'Refresh'}
           </button>
@@ -162,7 +152,10 @@ export function EventsPanel() {
 
       <div className={`mt-5 border-t pt-4 ${light ? 'border-slate-200' : 'border-white/8'}`}>
         <div className="flex items-center justify-between gap-2">
-          <h3 className={`text-[10px] uppercase tracking-[0.22em] ${light ? 'text-slate-400' : 'text-white/30'}`}>Near-Earth approaches</h3>
+          <div>
+            <h3 className={`text-[10px] uppercase tracking-[0.22em] ${light ? 'text-slate-400' : 'text-white/30'}`}>Near-Earth approaches</h3>
+            <div className="mt-1"><DataProvenanceBadge kind="calculated">CNEOS</DataProvenanceBadge></div>
+          </div>
           <button type="button" onClick={() => void loadApproaches()} disabled={approachState === 'loading'} className={`rounded-md border px-2 py-1 text-[9px] uppercase tracking-[0.16em] disabled:cursor-wait ${light ? 'border-slate-300 text-sky-700' : 'border-sky-300/25 text-sky-200/80'}`}>
             {approachState === 'loading' ? 'Loading…' : approachState === 'ready' ? 'Refresh' : 'Load'}
           </button>

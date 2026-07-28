@@ -10,6 +10,7 @@ import { TimeControls } from './ui/TimeControls';
 import { Landing } from './ui/Landing';
 import { ViewControls } from './ui/ViewControls';
 import { ExperienceModeControl } from './ui/ExperienceModeControl';
+import { EventTimeline } from './ui/EventTimeline';
 import { useFlight } from './flight/useFlight';
 import { SatellitePanel } from './ui/SatellitePanel';
 import { SatelliteInfo } from './ui/SatelliteInfo';
@@ -110,7 +111,8 @@ function App() {
           {/* One dossier at a time, in one place: a satellite is read instead of
               the world it is orbiting, not alongside it. */}
           {satellite ? <SatelliteInfo /> : <InfoPanel />}
-          <EventsPanel />
+          {mode === 'scientific' && <EventsPanel />}
+          {mode === 'scientific' && <EventTimeline />}
           {mode === 'now' && <SpaceWeatherPanel />}
           <ObserverPanel />
           <LaplacePanel />

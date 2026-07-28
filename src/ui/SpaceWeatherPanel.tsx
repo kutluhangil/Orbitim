@@ -136,6 +136,15 @@ export function SpaceWeatherPanel() {
 
       {snapshot && <p className={`mt-4 text-[10px] tabular-nums ${muted}`}>Updated {formatTime(snapshot.fetchedAt)}</p>}
       {snapshot && <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>Solar visuals respond to these observed reports.</p>}
+      <a
+        href="https://eyes.nasa.gov/apps/dsn-now/"
+        target="_blank"
+        rel="noreferrer"
+        className={`mt-4 inline-flex text-[10px] uppercase tracking-[0.16em] transition-colors ${light ? 'text-sky-700 hover:text-sky-900' : 'text-sky-200/75 hover:text-sky-100'}`}
+      >
+        Open NASA Eyes · DSN Now ↗
+      </a>
+      <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>Live station status remains in NASA’s dedicated interface; Orbitim does not infer DSN links.</p>
     </aside>
   );
 }
