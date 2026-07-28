@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { upcomingEvents, type SkyEvent } from '../lib/ephemeris/events';
 import { useFlight } from '../flight/useFlight';
 import { useSimTime } from '../scene/useSimTime';
-import { useTranslation } from './i18n';
+import { type AppLanguage, useTranslation } from './i18n';
 
 const HORIZON_MS = 45 * 86_400_000;
 
-function shortDate(date: Date): string {
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+function shortDate(date: Date, language: AppLanguage): string {
+  return date.toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
 function visit(event: SkyEvent) {
@@ -25,7 +25,7 @@ function visit(event: SkyEvent) {
 export function EventTimeline() {
   const target = useFlight((state) => state.target);
   const [, setTick] = useState(0);
-  const { t } = useTranslation();
+  const { language, t } = useTranslation();
 
   useEffect(() => {
     const interval = window.setInterval(() => setTick((value) => value + 1), 1000);
@@ -62,13 +62,13 @@ export function EventTimeline() {
               type="button"
               onClick={() => visit(event)}
               aria-label={t('visitEvent', { event: event.label, time: event.date.toISOString() })}
-              title={`${event.label} · ${shortDate(event.date)} UTC`}
+              title={`${event.label} · ${shortDate(event.date, language)} UTC`}
               className={`group absolute -translate-x-1/2 ${above ? '-top-[0.42rem]' : '-top-[0.1rem]'}`}
               style={{ left: `${offset}%` }}
             >
               <span className={`mx-auto block h-2.5 w-2.5 rounded-full border border-violet-100/70 bg-violet-300/70 shadow-[0_0_10px_rgba(196,181,253,0.75)] transition-transform group-hover:scale-125 ${above ? '' : 'mt-4'}`} />
               <span className={`pointer-events-none absolute left-1/2 whitespace-nowrap rounded-full border border-violet-200/20 bg-black/90 px-2 py-1 text-[8px] text-violet-100 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 ${above ? 'bottom-5 -translate-x-1/2' : 'top-7 -translate-x-1/2'}`}>
-                {event.label} · {shortDate(event.date)}
+                {event.label} · {shortDate(event.date, language)}
               </span>
             </button>
           );

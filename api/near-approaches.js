@@ -12,8 +12,25 @@ export default async function handler(req, res) {
     'date-min': 'now', 'date-max': '+365', 'dist-max': '0.05', sort: 'date', limit: '6', diameter: 'true', fullname: 'true'
   })) url.searchParams.set(key, value);
 
-  const upstream = await fetch(url);
-  const payload = await upstream.json();
+  let upstream;
+  let payload;
+  try {
+    upstream = await fetch(url);
+    const body = await upstream.text();
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      return res.status(502).json({
+        error: `JPL close-approach request returned invalid JSON (${upstream.status}).`,
+        detail: body.slice(0, 280) || null
+      });
+    }
+  } catch (cause) {
+    return res.status(502).json({
+      error: 'JPL close-approach request could not be completed.',
+      detail: cause instanceof Error ? cause.message : String(cause)
+    });
+  }
   if (!upstream.ok || !Array.isArray(payload.fields) || !Array.isArray(payload.data) || typeof payload.signature?.source !== 'string' || typeof payload.signature?.version !== 'string') {
     return res.status(502).json({ error: `JPL close-approach request failed (${upstream.status}).`, detail: payload.error ?? null });
   }

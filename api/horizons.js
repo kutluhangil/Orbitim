@@ -40,8 +40,25 @@ export default async function handler(req, res) {
     STOP_TIME: `'${asUtcMinute(stop)}'`, STEP_SIZE: "'1m'", OUT_UNITS: "'AU-D'", VEC_TABLE: "'2'"
   })) url.searchParams.set(key, value);
 
-  const upstream = await fetch(url);
-  const payload = await upstream.json();
+  let upstream;
+  let payload;
+  try {
+    upstream = await fetch(url);
+    const body = await upstream.text();
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      return res.status(502).json({
+        error: `Horizons request returned invalid JSON (${upstream.status}).`,
+        detail: body.slice(0, 280) || null
+      });
+    }
+  } catch (cause) {
+    return res.status(502).json({
+      error: 'Horizons request could not be completed.',
+      detail: cause instanceof Error ? cause.message : String(cause)
+    });
+  }
   if (!upstream.ok || typeof payload.result !== 'string') {
     return res.status(502).json({ error: `Horizons request failed (${upstream.status}).`, detail: payload.error ?? null });
   }

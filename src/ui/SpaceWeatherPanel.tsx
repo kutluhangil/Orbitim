@@ -4,12 +4,12 @@ import { useFlight } from '../flight/useFlight';
 import { fetchSpaceWeather, type SpaceWeatherSnapshot } from '../services/nasaDonki';
 import { useSolarActivity } from '../scene/solarActivity';
 import { useViewSettings } from '../scene/viewSettings';
-import { useTranslation } from './i18n';
+import { type AppLanguage, useTranslation } from './i18n';
 
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
 
-function formatTime(date: Date): string {
-  return new Intl.DateTimeFormat('en-GB', {
+function formatTime(date: Date, language: AppLanguage): string {
+  return new Intl.DateTimeFormat(language === 'tr' ? 'tr-TR' : 'en-GB', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
@@ -19,28 +19,32 @@ function formatTime(date: Date): string {
   }).format(date);
 }
 
-function details(snapshot: SpaceWeatherSnapshot): Array<{ label: string; value: string; detail: string }> {
+function details(
+  snapshot: SpaceWeatherSnapshot,
+  language: AppLanguage,
+  t: ReturnType<typeof useTranslation>['t']
+): Array<{ label: string; value: string; detail: string }> {
   const flare = snapshot.latestFlare;
   const cme = snapshot.latestCme;
   const storm = snapshot.latestGeomagneticActivity;
 
   return [
     {
-      label: 'Latest flare',
-      value: flare ? flare.classType : 'No report',
+      label: t('latestFlare'),
+      value: flare ? flare.classType : t('noReport'),
       detail: flare
-        ? `${formatTime(flare.peakTime)}${flare.sourceLocation ? ` · ${flare.sourceLocation}` : ''}`
-        : 'No flare report in the last 14 days'
+        ? `${formatTime(flare.peakTime, language)}${flare.sourceLocation ? ` · ${flare.sourceLocation}` : ''}`
+        : t('noFlareLast14Days')
     },
     {
-      label: 'Latest CME',
-      value: cme ? (cme.speedKmPerSecond === null ? 'Speed pending' : `${Math.round(cme.speedKmPerSecond)} km/s`) : 'No report',
-      detail: cme ? formatTime(cme.startTime) : 'No CME report in the last 14 days'
+      label: t('latestCme'),
+      value: cme ? (cme.speedKmPerSecond === null ? t('speedPending') : `${Math.round(cme.speedKmPerSecond)} km/s`) : t('noReport'),
+      detail: cme ? formatTime(cme.startTime, language) : t('noCmeLast14Days')
     },
     {
-      label: 'Geomagnetic Kp',
-      value: storm ? (storm.peakKp === null ? 'Reading pending' : storm.peakKp.toFixed(1)) : 'No report',
-      detail: storm ? formatTime(storm.observedTime ?? storm.startTime) : 'No storm report in the last 14 days'
+      label: t('geomagneticKp'),
+      value: storm ? (storm.peakKp === null ? t('readingPending') : storm.peakKp.toFixed(1)) : t('noReport'),
+      detail: storm ? formatTime(storm.observedTime ?? storm.startTime, language) : t('noStormLast14Days')
     }
   ];
 }
@@ -52,7 +56,7 @@ export function SpaceWeatherPanel() {
   const [snapshot, setSnapshot] = useState<SpaceWeatherSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const { t } = useTranslation();
+  const { language, t } = useTranslation();
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -119,10 +123,10 @@ export function SpaceWeatherPanel() {
       </header>
 
       {error ? (
-        <p className="mt-4 text-[11px] leading-relaxed text-red-300/90">NASA telemetry unavailable: {error}</p>
+        <p className="mt-4 text-[11px] leading-relaxed text-red-300/90">{t('nasaTelemetryUnavailable', { error })}</p>
       ) : snapshot ? (
         <ul className="mt-4 space-y-3">
-          {details(snapshot).map((item) => (
+          {details(snapshot, language, t).map((item) => (
             <li key={item.label}>
               <div className="flex items-baseline justify-between gap-3">
                 <span className={`text-[10px] uppercase tracking-[0.18em] ${muted}`}>{item.label}</span>
@@ -136,7 +140,7 @@ export function SpaceWeatherPanel() {
         <p className={`mt-4 text-[11px] ${muted}`}>{t('loadingNasaReports')}</p>
       )}
 
-      {snapshot && <p className={`mt-4 text-[10px] tabular-nums ${muted}`}>{t('updated')} {formatTime(snapshot.fetchedAt)}</p>}
+      {snapshot && <p className={`mt-4 text-[10px] tabular-nums ${muted}`}>{t('updated')} {formatTime(snapshot.fetchedAt, language)}</p>}
       {snapshot && <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>{t('solarVisualsNote')}</p>}
       <a
         href="https://eyes.nasa.gov/apps/dsn-now/"
@@ -146,7 +150,7 @@ export function SpaceWeatherPanel() {
       >
         {t('openNasaEyes')}
       </a>
-      <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>Live station status remains in NASA’s dedicated interface; Orbitim does not infer DSN links.</p>
+      <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>{t('dsnStatusNote')}</p>
     </aside>
   );
 }

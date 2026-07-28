@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Localized the live science, observer, event and satellite panels including Turkish date/number formatting, and made JPL route failures return explicit invalid-JSON or transport diagnostics.
 - Deferred NASA GLB moon model parsing until a visitor approaches that moon, preserving the source-backed close render while reducing overview network and GPU pressure.
 - Replaced the overlapping mobile top chrome with one accessible scene-control cockpit for modes, layers, theme, language and sharing.
 - Added source-backed NASA GLB renders for Triton, Titania, Oberon, Miranda, Mimas, Titan, Phobos and Deimos; added Tethys and Dione with NASA 3D models, JPL Horizons epoch phases and documented source attribution.

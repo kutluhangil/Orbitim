@@ -14,8 +14,8 @@ import { ObservationCard } from './ObservationCard';
 import { Row } from './Row';
 import { localizedBodyKind, localizedBodyName, useTranslation } from './i18n';
 
-function formatKm(km: number): string {
-  return `${Math.round(km).toLocaleString('en-US')} km`;
+function formatKm(km: number, language: 'en' | 'tr'): string {
+  return `${Math.round(km).toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US')} km`;
 }
 
 function formatLightTravelTime(minutes: number): string {
@@ -115,11 +115,11 @@ export function InfoPanel() {
           <dl>
             {target !== 'earth' && (
               <>
-                <Row label={t('distanceFromEarth')} value={formatKm(auToKm(state.distanceFromEarthAU))} />
+                <Row label={t('distanceFromEarth')} value={formatKm(auToKm(state.distanceFromEarthAU), language)} />
                 <Row label={t('lightTravelTime')} value={formatLightTravelTime(auToLightMinutes(state.distanceFromEarthAU))} />
               </>
             )}
-            <Row label={t('distanceFromSun')} value={formatKm(auToKm(state.distanceFromSunAU))} />
+            <Row label={t('distanceFromSun')} value={formatKm(auToKm(state.distanceFromSunAU), language)} />
             <Row
               label={t('apparentMagnitude')}
               value={state.magnitude === null ? t('notDefined') : state.magnitude.toFixed(2)}
@@ -160,7 +160,7 @@ export function InfoPanel() {
         <section className="mb-5">
           <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">{t('factSheet')}</h3>
           <dl>
-            <Row label={t('equatorialRadius')} value={formatKm(record.radiusKm)} />
+            <Row label={t('equatorialRadius')} value={formatKm(record.radiusKm, language)} />
             <Row label={t('mass')} value={facts.massKg} />
             <Row label={t('surfaceGravity')} value={facts.gravity} />
             <Row label={t('meanTemperature')} value={facts.meanTemp} />

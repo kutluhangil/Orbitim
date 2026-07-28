@@ -7,12 +7,13 @@ import { SGP4_EARTH_RADIUS_KM } from '../scene/satelliteFrame';
 import { useSimTime } from '../scene/useSimTime';
 import { useIsCompact } from './useMediaQuery';
 import { Row } from './Row';
+import { useTranslation } from './i18n';
 
 /** Julian date of the Unix epoch, for reading an element set's own timestamp. */
 const JD_UNIX_EPOCH = 2440587.5;
 
-function formatKm(km: number): string {
-  return `${Math.round(km).toLocaleString('en-US')} km`;
+function formatKm(km: number, language: 'en' | 'tr'): string {
+  return `${Math.round(km).toLocaleString(language === 'tr' ? 'tr-TR' : 'en-US')} km`;
 }
 
 function formatLatitude(degrees: number): string {
@@ -66,6 +67,7 @@ export function SatelliteInfo() {
   const compact = useIsCompact();
   const [open, setOpen] = useState(!compact);
   const [, setTick] = useState(0);
+  const { language, t } = useTranslation();
 
   // The propagated block moves every frame; a second is as often as a reader can
   // take a figure in, and re-rendering the panel at frame rate would cost more
@@ -114,7 +116,7 @@ export function SatelliteInfo() {
           </span>
           <span className="block truncate text-lg font-light tracking-tight text-white">{name}</span>
         </span>
-        <span className="text-[10px] uppercase tracking-[0.2em] text-white/40">{open ? 'Hide' : 'Details'}</span>
+        <span className="text-[10px] uppercase tracking-[0.2em] text-white/40">{open ? t('hide') : t('details')}</span>
       </button>
 
       <div
@@ -126,13 +128,13 @@ export function SatelliteInfo() {
           <div className="flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] p-3">
             <img
               src={`/craft/${group.craft}.webp`}
-              alt={`Representative illustration of a ${group.name} class spacecraft`}
+              alt={t('spacecraftIllustration', { group: group.name })}
               loading="lazy"
               className="max-h-40 w-auto object-contain"
             />
           </div>
           <figcaption className="mt-1.5 text-center text-[9px] uppercase tracking-[0.2em] text-white/25">
-            Illustration · representative of class
+            {t('illustrationRepresentative')}
           </figcaption>
         </figure>
 
@@ -146,38 +148,37 @@ export function SatelliteInfo() {
 
         {live ? (
           <section className="mb-5">
-            <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">Right now</h3>
+            <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">{t('rightNow')}</h3>
             <dl>
-              <Row label="Altitude" value={formatKm(live.altitudeKm)} />
-              <Row label="Speed" value={`${live.speedKmS.toFixed(2)} km/s`} />
-              <Row label="Latitude" value={formatLatitude(live.latitudeDeg)} />
-              <Row label="Longitude" value={formatLongitude(live.longitudeDeg)} />
+              <Row label={t('altitude')} value={formatKm(live.altitudeKm, language)} />
+              <Row label={t('speed')} value={`${live.speedKmS.toFixed(2)} km/s`} />
+              <Row label={t('latitude')} value={formatLatitude(live.latitudeDeg)} />
+              <Row label={t('longitude')} value={formatLongitude(live.longitudeDeg)} />
             </dl>
           </section>
         ) : (
           <p className="mb-5 rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2 text-[12px] leading-relaxed text-red-200/85">
-            SGP4 returned error {satrec.error} for this element set at the instant on the clock — no position can be
-            computed for it. The orbit below is what the element set itself states.
+            {t('satellitePropagationError', { error: satrec.error })}
           </p>
         )}
 
         <section className="mb-5">
-          <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">Orbit</h3>
+          <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">{t('orbit')}</h3>
           <dl>
-            <Row label="Period" value={`${periodMinutes.toFixed(1)} min`} />
-            <Row label="Inclination" value={`${((satrec.inclo * 180) / Math.PI).toFixed(2)}°`} />
-            <Row label="Eccentricity" value={satrec.ecco.toFixed(5)} />
-            <Row label="Apogee" value={formatKm(satrec.alta * SGP4_EARTH_RADIUS_KM)} />
-            <Row label="Perigee" value={formatKm(satrec.altp * SGP4_EARTH_RADIUS_KM)} />
+            <Row label={t('period')} value={`${periodMinutes.toFixed(1)} min`} />
+            <Row label={t('inclination')} value={`${((satrec.inclo * 180) / Math.PI).toFixed(2)}°`} />
+            <Row label={t('eccentricity')} value={satrec.ecco.toFixed(5)} />
+            <Row label={t('apogee')} value={formatKm(satrec.alta * SGP4_EARTH_RADIUS_KM, language)} />
+            <Row label={t('perigee')} value={formatKm(satrec.altp * SGP4_EARTH_RADIUS_KM, language)} />
           </dl>
         </section>
 
         <section className="mb-5">
-          <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">Element set</h3>
+          <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">{t('elementSet')}</h3>
           <dl>
-            <Row label="NORAD id" value={satrec.satnum} />
-            <Row label="Epoch" value={new Date(epochMs).toISOString().slice(0, 16).replace('T', ' ')} />
-            <Row label="Age at sim time" value={`${epochAgeDays.toFixed(2)} days`} />
+            <Row label={t('noradId')} value={satrec.satnum} />
+            <Row label={t('epoch')} value={new Date(epochMs).toISOString().slice(0, 16).replace('T', ' ')} />
+            <Row label={t('ageAtSimTime')} value={`${epochAgeDays.toFixed(2)} ${t('days')}`} />
           </dl>
         </section>
 
@@ -192,20 +193,19 @@ export function SatelliteInfo() {
                 : 'border-sky-300/25 text-sky-200/80 hover:border-sky-300/50 hover:text-sky-100'
             }`}
           >
-            {following ? 'Release' : 'Ride along'}
+            {following ? t('release') : t('rideAlong')}
           </button>
           <button
             type="button"
             onClick={release}
             className="flex h-11 items-center justify-center rounded-full border border-white/10 px-5 text-[11px] uppercase tracking-[0.2em] text-white/50 transition-colors hover:border-white/25 hover:text-white/80 md:h-10"
           >
-            Close
+            {t('close')}
           </button>
         </div>
 
         <p className="mt-6 text-[10px] leading-relaxed text-white/25">
-          Position and velocity propagated with SGP4 from the CelesTrak element set above. Accuracy degrades with
-          the age of that set.
+          {t('satelliteSourceNote')}
         </p>
       </div>
     </aside>

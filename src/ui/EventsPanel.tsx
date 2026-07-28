@@ -6,7 +6,7 @@ import { useViewSettings } from '../scene/viewSettings';
 import { fetchNearApproaches, type NearApproach } from '../services/nearApproaches';
 import { useSpacecraftState } from '../scene/spacecraftState';
 import { DataProvenanceBadge } from './DataProvenanceBadge';
-import { useTranslation } from './i18n';
+import { type AppLanguage, useTranslation } from './i18n';
 
 /**
  * The sky's calendar, shown in the overview where the right-hand column is free.
@@ -15,15 +15,22 @@ import { useTranslation } from './i18n';
  * scrubbing the date rolls the whole calendar forward with it.
  */
 
-function formatWhen(date: Date, now: Date): { rel: string; abs: string } {
+function formatWhen(
+  date: Date,
+  now: Date,
+  language: AppLanguage,
+  t: ReturnType<typeof useTranslation>['t']
+): { rel: string; abs: string } {
   const days = Math.round((date.getTime() - now.getTime()) / 86400000);
   let rel: string;
-  if (days <= 0) rel = 'imminent';
-  else if (days === 1) rel = 'tomorrow';
-  else if (days < 45) rel = `in ${days} days`;
-  else if (days < 730) rel = `in ${Math.max(1, Math.round(days / 30.44))} months`;
-  else rel = `in ${(days / 365.25).toFixed(1)} years`;
-  const abs = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  if (days <= 0) rel = t('imminent');
+  else if (days === 1) rel = t('tomorrow');
+  else if (days < 45) rel = t('inDays', { count: days });
+  else if (days < 730) rel = t('inMonths', { count: Math.max(1, Math.round(days / 30.44)) });
+  else rel = t('inYears', { count: (days / 365.25).toFixed(1) });
+  const abs = date.toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-GB', {
+    day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'
+  });
   return { rel, abs };
 }
 
@@ -39,7 +46,7 @@ export function EventsPanel() {
   const horizonsUpdatedAt = useSpacecraftState((state) => state.updatedAt);
   const horizonsError = useSpacecraftState((state) => state.error);
   const refreshHorizons = useSpacecraftState((state) => state.refresh);
-  const { t } = useTranslation();
+  const { language, t } = useTranslation();
 
   useEffect(() => {
     const timer = window.setInterval(() => setTick((t) => t + 1), 1000);
@@ -72,7 +79,7 @@ export function EventsPanel() {
       setApproachState('ready');
     } catch (cause) {
       setApproachState('error');
-      setApproachError(`Near-approach data unavailable: ${cause instanceof Error ? cause.message : String(cause)}`);
+      setApproachError(t('nearApproachUnavailable', { error: cause instanceof Error ? cause.message : String(cause) }));
     }
   };
 
@@ -105,7 +112,7 @@ export function EventsPanel() {
         <div>
           <div className="text-[15px] font-light tracking-tight">{moon.name}</div>
           <div className={`text-[11px] ${muted}`}>
-            {(moon.illum * 100).toFixed(0)}% lit · {moon.waxing ? 'waxing' : 'waning'}
+            {(moon.illum * 100).toFixed(0)}% {t('lit')} · {moon.waxing ? t('waxing') : t('waning')}
           </div>
         </div>
       </div>
@@ -115,7 +122,7 @@ export function EventsPanel() {
       </h3>
       <ul className="space-y-3">
         {events.map((event) => {
-          const when = formatWhen(event.date, now);
+          const when = formatWhen(event.date, now, language, t);
           return (
             <li key={event.id} className="flex items-baseline justify-between gap-3">
               <div className="min-w-0">
@@ -146,23 +153,23 @@ export function EventsPanel() {
             {horizonsStatus === 'loading' ? t('loading') : t('refresh')}
           </button>
         </div>
-        {horizonsStatus === 'ready' && horizonsUpdatedAt && <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>5 heliocentric state vectors · JPL Horizons · fetched {horizonsUpdatedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC</p>}
-        {horizonsStatus === 'idle' && <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>Requesting exact, heliocentric state vectors from JPL Horizons.</p>}
+        {horizonsStatus === 'ready' && horizonsUpdatedAt && <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>{t('vectorsFetched', { count: 5, time: horizonsUpdatedAt.toLocaleTimeString(language === 'tr' ? 'tr-TR' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) })}</p>}
+        {horizonsStatus === 'idle' && <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>{t('requestingLiveVectors')}</p>}
         {horizonsError && <p className="mt-2 text-[10px] leading-relaxed text-red-300/90">{horizonsError}</p>}
-        <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>A vector is used only at its stated instant; scrubbed times retain the clearly labelled reference trajectory.</p>
+        <p className={`mt-1 text-[10px] leading-relaxed ${muted}`}>{t('referenceTrajectory')}</p>
       </div>
 
       <div className={`mt-5 border-t pt-4 ${light ? 'border-slate-200' : 'border-white/8'}`}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h3 className={`text-[10px] uppercase tracking-[0.22em] ${light ? 'text-slate-400' : 'text-white/30'}`}>Near-Earth approaches</h3>
+            <h3 className={`text-[10px] uppercase tracking-[0.22em] ${light ? 'text-slate-400' : 'text-white/30'}`}>{t('nearEarthApproaches')}</h3>
             <div className="mt-1"><DataProvenanceBadge kind="calculated">CNEOS</DataProvenanceBadge></div>
           </div>
           <button type="button" onClick={() => void loadApproaches()} disabled={approachState === 'loading'} className={`rounded-md border px-2 py-1 text-[9px] uppercase tracking-[0.16em] disabled:cursor-wait ${light ? 'border-slate-300 text-sky-700' : 'border-sky-300/25 text-sky-200/80'}`}>
             {approachState === 'loading' ? t('loading') : approachState === 'ready' ? t('refresh') : t('load')}
           </button>
         </div>
-        {approachState === 'idle' && <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>The next six NEO approaches within 0.05 AU, requested only when opened.</p>}
+        {approachState === 'idle' && <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>{t('approachesOnDemand')}</p>}
         {approachError && <p className="mt-2 text-[10px] leading-relaxed text-red-300/90">{approachError}</p>}
         {approachState === 'ready' && (
           <>
@@ -174,14 +181,14 @@ export function EventsPanel() {
                 </li>
               ))}
             </ul>
-            {approaches.length === 0 && <p className={`mt-2 text-[10px] ${muted}`}>No matching approaches in the requested window.</p>}
-            {approachSource && <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>{approachSource} · times are TDB.</p>}
+            {approaches.length === 0 && <p className={`mt-2 text-[10px] ${muted}`}>{t('noMatchingApproaches')}</p>}
+            {approachSource && <p className={`mt-2 text-[10px] leading-relaxed ${muted}`}>{approachSource} · {t('timesTdb')}.</p>}
           </>
         )}
       </div>
 
       <p className={`mt-6 text-[10px] leading-relaxed ${light ? 'text-slate-400' : 'text-white/25'}`}>
-        Eclipses, transits and phases from astronomy-engine, for the instant on the clock.
+        {t('eventSourceNote')}
       </p>
     </aside>
   );

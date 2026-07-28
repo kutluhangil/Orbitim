@@ -29,7 +29,8 @@ export function SatellitePanel() {
   // rail on a desktop and on the dossier on a phone.
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { t } = useTranslation();
+  const { language, t } = useTranslation();
+  const numberLocale = language === 'tr' ? 'tr-TR' : 'en-US';
 
   /**
    * Puts the camera on the station itself. The stations set is loaded on demand
@@ -44,7 +45,7 @@ export function SatellitePanel() {
       const stations = await groups.load('stations');
       const iss = stations.find((item) => Number(item.satrec.satnum) === ISS_NORAD_ID);
       if (!iss) {
-        setError(`ISS (NORAD ${ISS_NORAD_ID}) is not in the loaded stations element set`);
+        setError(t('issMissing', { norad: ISS_NORAD_ID }));
         return;
       }
 
@@ -55,7 +56,7 @@ export function SatellitePanel() {
       selection.setFollowing(true);
       useFlight.getState().refocus();
     } catch (cause) {
-      setError(`Could not load the stations element set: ${cause instanceof Error ? cause.message : String(cause)}`);
+      setError(t('stationsLoadFailed', { error: cause instanceof Error ? cause.message : String(cause) }));
     }
   };
 
@@ -73,7 +74,7 @@ export function SatellitePanel() {
           <Fragment key={group.id}>
             {startsDebris && (
               <li className="col-span-2 mt-2 border-t border-white/8 px-2 pb-1 pt-2 text-[9px] uppercase tracking-[0.24em] text-white/25">
-                Debris clouds
+                {t('debrisClouds')}
               </li>
             )}
             <li>
@@ -129,7 +130,7 @@ export function SatellitePanel() {
         >
           <span className="h-1.5 w-1.5 rounded-full bg-sky-300" aria-hidden />
           {t('satellites')}
-          <span className="tabular-nums text-white/40">{total.toLocaleString('en-US')}</span>
+          <span className="tabular-nums text-white/40">{total.toLocaleString(numberLocale)}</span>
         </button>
 
         {open && (
@@ -140,7 +141,7 @@ export function SatellitePanel() {
           >
             <header className="sticky top-0 flex items-center justify-between border-b border-white/8 bg-black/60 px-4 py-3 backdrop-blur-xl">
               <span className="text-[10px] uppercase tracking-[0.2em] text-white/60">
-                {t('satellites')} <span className="tabular-nums text-white/35">{total.toLocaleString('en-US')}</span>
+                {t('satellites')} <span className="tabular-nums text-white/35">{total.toLocaleString(numberLocale)}</span>
               </span>
               <button
                 type="button"
@@ -172,7 +173,7 @@ export function SatellitePanel() {
         className="flex w-full items-center justify-between px-4 py-3 text-[10px] uppercase tracking-[0.2em] text-white/60 transition-colors hover:text-sky-200"
       >
         <span>{t('satellites')}</span>
-        <span className="tabular-nums text-white/35">{total.toLocaleString('en-US')}</span>
+        <span className="tabular-nums text-white/35">{total.toLocaleString(numberLocale)}</span>
       </button>
 
       {oldestActive && (
