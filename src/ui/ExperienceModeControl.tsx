@@ -31,7 +31,7 @@ export function ExperienceModeControl() {
     <div
       role="radiogroup"
       aria-label={t('experienceMode')}
-      className="pointer-events-auto fixed left-1/2 top-[calc(env(safe-area-inset-top)+0.75rem)] z-30 flex -translate-x-1/2 rounded-full border border-white/10 bg-black/70 p-1 shadow-lg shadow-black/30 backdrop-blur-xl md:top-6"
+      className="pointer-events-auto fixed left-1/2 top-6 z-30 hidden -translate-x-1/2 rounded-full border border-white/10 bg-black/70 p-1 shadow-lg shadow-black/30 backdrop-blur-xl md:flex"
     >
       {modes.map((item) => {
         const selected = mode === item.id;

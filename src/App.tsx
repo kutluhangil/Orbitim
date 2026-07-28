@@ -10,6 +10,7 @@ import { TimeControls } from './ui/TimeControls';
 import { Landing } from './ui/Landing';
 import { ViewControls } from './ui/ViewControls';
 import { ExperienceModeControl } from './ui/ExperienceModeControl';
+import { MobileCockpitControl } from './ui/MobileCockpitControl';
 import { EventTimeline } from './ui/EventTimeline';
 import { useFlight } from './flight/useFlight';
 import { SatellitePanel } from './ui/SatellitePanel';
@@ -119,6 +120,7 @@ function App() {
           <SatellitePanel />
           <ExperienceModeControl />
           <ViewControls />
+          <MobileCockpitControl />
           <TimeControls />
         </>
       ) : (

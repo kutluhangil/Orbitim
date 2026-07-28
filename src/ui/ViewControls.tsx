@@ -25,7 +25,7 @@ export function ViewControls() {
     'pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border bg-black/70 backdrop-blur-xl transition-colors';
 
   return (
-    <div className="pointer-events-none fixed right-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-30 flex items-center gap-2 md:right-6 md:top-6">
+    <div className="pointer-events-none fixed right-6 top-6 z-30 hidden items-center gap-2 md:flex">
       <button
         type="button"
         onClick={toggleOrbits}
