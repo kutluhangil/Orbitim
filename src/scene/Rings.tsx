@@ -51,6 +51,7 @@ const FRAGMENT = /* glsl */ `
   uniform float uPlanetRadius;
   uniform vec3 uSunDirection;
   uniform float uSimDays;
+  uniform bool uIsUranus;
 
   varying vec3 vLocalPosition;
   varying vec3 vViewPosition;
@@ -60,6 +61,10 @@ const FRAGMENT = /* glsl */ `
     return fract(sin(x * 127.1) * 43758.5453123);
   }
 
+  float narrowBand(float radiusRatio, float centre, float halfWidth) {
+    return 1.0 - smoothstep(halfWidth * 0.45, halfWidth, abs(radiusRatio - centre));
+  }
+
   void main() {
     float r = length(vLocalPosition.xy);
     float t = clamp((r - uInner) / (uOuter - uInner), 0.0, 1.0);
@@ -67,21 +72,52 @@ const FRAGMENT = /* glsl */ `
     vec4 sampled = uHasMap ? texture2D(uMap, vec2(t, 0.5)) : vec4(uColor, 0.55);
     vec3 color = uHasMap ? sampled.rgb : uColor;
     float opacity = uHasMap ? sampled.a : 0.45;
-
-    // Ringlets, faded out as they approach the size of a pixel: fine radial
-    // structure that is detail up close and nothing but aliasing at distance.
-    float resolved = 1.0 - smoothstep(0.0, 1.0, fwidth(r) * 420.0);
-    float ringlets = mix(1.0, hash(floor(r * 900.0)) * 0.35 + 0.65, resolved);
-    // Ring particles orbit differentially rather than as a solid record. A
-    // Keplerian period grows with radius; sparse azimuthal density structure
-    // therefore shears around the planet, with inner ringlets moving faster.
     float radiusRatio = max(r / uPlanetRadius, 1.0);
-    float orbitDays = 0.24 * pow(radiusRatio, 1.5);
-    float orbitPhase = uSimDays * 6.28318530718 / orbitDays;
-    float azimuth = atan(vLocalPosition.y, vLocalPosition.x);
-    float densityWave = 0.965 + 0.035 * sin(azimuth * 7.0 + orbitPhase + r * 18.0);
-    float wave = mix(1.0, densityWave, resolved);
-    opacity *= ringlets * wave;
+
+    if (uIsUranus) {
+      // The 13 observed Uranian rings are mostly narrow and dark, not a broad
+      // bright sheet. Ratios are ring radii divided by Uranus's equatorial
+      // radius; the broad Nu and Mu dust rings remain deliberately faint.
+      float zeta = narrowBand(radiusRatio, 1.49, 0.055) * 0.003;
+      float six = narrowBand(radiusRatio, 1.637, 0.004) * 0.11;
+      float five = narrowBand(radiusRatio, 1.652, 0.003) * 0.075;
+      float four = narrowBand(radiusRatio, 1.666, 0.003) * 0.08;
+      float alphaRing = narrowBand(radiusRatio, 1.750, 0.006) * 0.12;
+      float beta = narrowBand(radiusRatio, 1.787, 0.007) * 0.11;
+      float eta = narrowBand(radiusRatio, 1.846, 0.004) * 0.055;
+      float gamma = narrowBand(radiusRatio, 1.863, 0.004) * 0.10;
+      float delta = narrowBand(radiusRatio, 1.889, 0.005) * 0.095;
+      float lambda = narrowBand(radiusRatio, 1.957, 0.003) * 0.045;
+      float epsilon = narrowBand(radiusRatio, 2.001, 0.011) * 0.20;
+      float nu = narrowBand(radiusRatio, 2.63, 0.065) * 0.0015;
+      float muRing = narrowBand(radiusRatio, 3.82, 0.09) * 0.0012;
+
+      opacity =
+        zeta + six + five + four + alphaRing + beta + eta + gamma + delta +
+        lambda + epsilon + nu + muRing;
+      vec3 darkGrey = vec3(0.13, 0.15, 0.16);
+      vec3 dustyRed = vec3(0.20, 0.10, 0.08);
+      vec3 dustyBlue = vec3(0.10, 0.17, 0.23);
+      float innerOpacity = max(opacity - nu - muRing, 0.0);
+      color = darkGrey;
+      color = mix(color, dustyRed, clamp(nu / max(opacity, 0.0001), 0.0, 1.0));
+      color = mix(color, dustyBlue, clamp(muRing / max(opacity, 0.0001), 0.0, 1.0));
+      color += vec3(0.05) * clamp(innerOpacity * 2.0, 0.0, 1.0);
+    } else {
+      // Ringlets, faded out as they approach the size of a pixel: fine radial
+      // structure that is detail up close and nothing but aliasing at distance.
+      float resolved = 1.0 - smoothstep(0.0, 1.0, fwidth(r) * 420.0);
+      float ringlets = mix(1.0, hash(floor(r * 900.0)) * 0.35 + 0.65, resolved);
+      // Ring particles orbit differentially rather than as a solid record. A
+      // Keplerian period grows with radius; sparse azimuthal density structure
+      // therefore shears around the planet, with inner ringlets moving faster.
+      float orbitDays = 0.24 * pow(radiusRatio, 1.5);
+      float orbitPhase = uSimDays * 6.28318530718 / orbitDays;
+      float azimuth = atan(vLocalPosition.y, vLocalPosition.x);
+      float densityWave = 0.965 + 0.035 * sin(azimuth * 7.0 + orbitPhase + r * 18.0);
+      float wave = mix(1.0, densityWave, resolved);
+      opacity *= ringlets * wave;
+    }
 
     // How obliquely this pixel's sight line crosses the layer. Signed, because
     // which face is being looked at decides whether the Sun is on this side.
@@ -110,9 +146,17 @@ const FRAGMENT = /* glsl */ `
       // Sun behind the plane: what reaches the eye is light that came through.
       // The dense bands go dark and the gaps between them glow, which is why
       // the Cassini division is the brightest thing in a backlit ring.
-      float transmitted = pow(clamp(1.0 - opacity, 0.0, 1.0), 0.6);
-      color = mix(color * 0.3, color * 1.5 + vec3(0.16, 0.14, 0.10), transmitted);
-      alpha = mix(alpha, alpha * 0.8 + 0.18 * transmitted, 0.75);
+      if (uIsUranus) {
+        // Voyager's dark Uranian ring particles do not form Saturn's luminous
+        // backlit veil; retain the named ring opacity and dim their reflected
+        // face instead of lighting every empty gap in the geometric plane.
+        color *= 0.45;
+        alpha *= 0.85;
+      } else {
+        float transmitted = pow(clamp(1.0 - opacity, 0.0, 1.0), 0.6);
+        color = mix(color * 0.3, color * 1.5 + vec3(0.16, 0.14, 0.10), transmitted);
+        alpha = mix(alpha, alpha * 0.8 + 0.18 * transmitted, 0.75);
+      }
     } else {
       // Sun on this side: straight reflection, plus the opposition surge that
       // brightens a particle swarm looked at from alongside its own light.
@@ -158,9 +202,10 @@ export function Rings({ record, radius, map, worldPosition }: RingsProps) {
       uOuter: { value: outer },
       uPlanetRadius: { value: radius },
       uSunDirection: { value: new THREE.Vector3(1, 0, 0) },
-      uSimDays: { value: 0 }
+      uSimDays: { value: 0 },
+      uIsUranus: { value: record.id === 'uranus' }
     }),
-    [map, record.color, inner, outer, radius]
+    [map, record.color, record.id, inner, outer, radius]
   );
 
   const mesh = useRef<THREE.Mesh>(null);

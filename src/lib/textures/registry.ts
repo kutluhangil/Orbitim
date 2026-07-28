@@ -56,10 +56,10 @@ export const TEXTURES: Partial<Record<BodyId, BodyTextureSet>> = {
   europa: { map: { far: `${T}/nasa_europa.jpg`, near: `${T}/nasa_europa.jpg` } },
   ganymede: { map: { far: `${T}/nasa_ganymede.jpg`, near: `${T}/nasa_ganymede.jpg` } },
   callisto: { map: { far: `${T}/nasa_callisto.jpg`, near: `${T}/nasa_callisto.jpg` } },
-  // Real global mosaics: New Horizons for Pluto and Charon, Dawn for Ceres. The
-  // published globes are monochrome — a full-globe colour equirectangular of
-  // Pluto's far side does not exist — so these carry the true grey rather than
-  // an invented tint. See public/textures/ATTRIBUTION.md.
+  // Real global mosaics: New Horizons for Pluto and Charon, Dawn for Ceres.
+  // Pluto uses NASA's MVIC colour mosaic; its unobserved south is explicitly
+  // completed with a featureless mean-albedo fill, never invented terrain.
+  // See public/textures/ATTRIBUTION.md.
   ceres: { map: { far: `${T}/ceres.jpg`, near: `${T}/ceres.jpg` } },
   pluto: { map: { far: `${T}/pluto.jpg`, near: `${T}/pluto.jpg` } },
   charon: { map: { far: `${T}/charon.jpg`, near: `${T}/charon.jpg` } },

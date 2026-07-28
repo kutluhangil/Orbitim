@@ -25,14 +25,18 @@ used as full globes.
 
 ## Dwarf-planet surfaces
 
-`pluto.jpg`, `charon.jpg` and `ceres.jpg` are real global mosaics, public domain:
+`pluto.jpg`, `charon.jpg` and `ceres.jpg` are based on real global mosaics,
+public domain:
 
-- **Pluto** and **Charon** — NASA / JHUAPL / SwRI **New Horizons** LORRI–MVIC
-  global mosaics (300 m/px), via USGS Astrogeology.
+- **Pluto** — NASA / JHUAPL / SwRI **New Horizons** Ralph/MVIC global colour
+  mosaic. Pixels outside the observed southern coverage use a smooth,
+  longitude-neutral mean-albedo fill so unknown terrain is not fabricated.
+- **Charon** — NASA / JHUAPL / SwRI **New Horizons** LORRI–MVIC global mosaic
+  (300 m/px), via USGS Astrogeology.
 - **Ceres** — NASA / JPL-Caltech / **DLR** **Dawn** Framing Camera global mosaic,
   via USGS Astrogeology.
 
-Downsampled to equirectangular JPEG. The published globes are monochrome; no
+Downsampled to equirectangular JPEG. Charon and Ceres remain monochrome; no
 colour was invented.
 
 ## Saturnian moon surfaces

@@ -5,6 +5,7 @@ import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { useFlight } from '../flight/useFlight';
 import { isTouchPrimary } from '../lib/device';
+import { getBodyRecord } from '../lib/ephemeris/bodies';
 import { sceneRadiusOf, type PositionRegistry } from './bodyPositions';
 import { satelliteFocus, useSatelliteSelection } from './satelliteSelection';
 import { KM_TO_SCENE } from './satelliteFrame';
@@ -133,7 +134,11 @@ export function CameraRig({ registry }: CameraRigProps) {
     const destinationDistance = riding
       ? SATELLITE_STANDOFF
       : target
-        ? sceneRadiusOf(target) * ORBIT_RADII
+        ? sceneRadiusOf(target) *
+          Math.max(
+            ORBIT_RADII,
+            Math.min(getBodyRecord(target).rings?.outerRadii ?? 1, 2.3) * 1.55
+          )
         : overviewEye.current.length();
 
     if (phase === 'flying') {

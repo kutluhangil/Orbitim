@@ -397,7 +397,11 @@ export function useBodyShading(
             float ringR = length( vOrbitimWorld + ringSun * ringT - uRingCenter );
             if ( ringR > uRingInner && ringR < uRingOuter ) {
               float ringStrip = ( ringR - uRingInner ) / ( uRingOuter - uRingInner );
-              float ringAlpha = uHasRingMap ? texture2D( uRingMap, vec2( ringStrip, 0.5 ) ).a : 0.5;
+              // A missing opacity strip must not turn the entire geometric
+              // ring span into one broad, fictitious shadow. Uranus's named
+              // rings are rendered procedurally on the plane and are too narrow
+              // for this coarse surface-shadow pass.
+              float ringAlpha = uHasRingMap ? texture2D( uRingMap, vec2( ringStrip, 0.5 ) ).a : 0.0;
               diffuseColor.rgb *= 1.0 - ringAlpha * ${RING_SHADOW_STRENGTH.toFixed(2)};
             }
           }

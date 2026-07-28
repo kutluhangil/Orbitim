@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Replaced Pluto's broken half-black plate with NASA's New Horizons MVIC colour mosaic plus an explicitly featureless fill for unobserved southern coverage, and rebuilt Uranus's ring plane as 13 narrow, faint, body-specific rings with ring-aware camera framing.
 - Rebuilt Earth's clouds as an oblate, physically separated shell with density-driven height, alpha-cut clear sky, sunlight and independent simulation-time advection; clarified that the unchanged planet pipeline preserves full EQJ/J2000 3D bearings.
 - Replaced the desktop body list with a texture-backed, keyboard-accessible solar-system dock above the simulation clock, including hover labels and direct world visits.
 - Added measured polar flattening and matching ellipsoidal atmospheres for Earth, Mars and the giant planets, updated Jupiter's equatorial radius from 2026 Juno results, and made Venus's visible cloud deck super-rotate on its observed four-day period.

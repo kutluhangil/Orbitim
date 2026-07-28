@@ -65,7 +65,10 @@ const RECORDS: BodyRecord[] = [
   // the same reference level until the full revised ellipsoid is standardized.
   { id: 'jupiter', name: 'Jupiter', kind: 'planet', engineBody: Body.Jupiter, radiusKm: 71488, polarRadiusKm: 66854, axialTiltDeg: 3.13, rotationHours: 9.925, color: '#d9a066' },
   { id: 'saturn', name: 'Saturn', kind: 'planet', engineBody: Body.Saturn, radiusKm: 60268, polarRadiusKm: 54364, axialTiltDeg: 26.73, rotationHours: 10.656, rings: { innerRadii: 1.24, outerRadii: 2.27 }, color: '#e3d1a0' },
-  { id: 'uranus', name: 'Uranus', kind: 'planet', engineBody: Body.Uranus, radiusKm: 25559, polarRadiusKm: 24973, axialTiltDeg: 97.77, rotationHours: -17.24, rings: { innerRadii: 1.64, outerRadii: 2.0 }, color: '#9fd8e0' },
+  // NASA's named system runs from the diffuse Zeta ring to the faint outer Mu
+  // ring. The renderer resolves each named structure rather than filling the
+  // whole span with a solid disc.
+  { id: 'uranus', name: 'Uranus', kind: 'planet', engineBody: Body.Uranus, radiusKm: 25559, polarRadiusKm: 24973, axialTiltDeg: 97.77, rotationHours: -17.24, rings: { innerRadii: 1.40, outerRadii: 3.98 }, color: '#9fd8e0' },
   { id: 'neptune', name: 'Neptune', kind: 'planet', engineBody: Body.Neptune, radiusKm: 24764, polarRadiusKm: 24341, axialTiltDeg: 28.32, rotationHours: 16.11, color: '#5b7fe0' },
 
   // Pluto has an astronomy-engine theory; its moon Charon follows in the moon
