@@ -147,6 +147,68 @@ test('Explore Atlas keeps credited NASA galaxy observations distinct from the si
   await expect(selected.getByRole('link', { name: 'Read NGC 1300' })).toHaveAttribute('href', 'https://science.nasa.gov/image-detail/ngc-1300/');
 });
 
+test('Explore Atlas resolves a bounded NASA/IPAC NED object lookup', async ({ page }) => {
+  test.setTimeout(60_000);
+  const requestedUrls: string[] = [];
+  await page.route('**/api/deep-sky?*', async (route) => {
+    const requestUrl = new URL(route.request().url());
+    requestedUrls.push(requestUrl.toString());
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        kind: 'resolved', query: requestUrl.searchParams.get('q'), aliases: [],
+        record: {
+          name: 'MESSIER 087', objectTypeCode: 'G', rightAscensionDeg: 187.70593, declinationDeg: 12.39112,
+          redshift: 0.004283, redshiftUncertainty: 0.000013, redshiftReference: '1991RC3.9.C...0000d',
+          detailUrl: 'https://ned.ipac.caltech.edu/NED::API/OverviewOfObject?TARGET=M87'
+        },
+        sourceUrl: 'https://ned.ipac.caltech.edu/Docs::API/',
+        fetchedAt: '2026-07-29T12:00:00.000Z'
+      })
+    });
+  });
+
+  await enterSystem(page);
+  await page.getByRole('button', { name: 'Open scene controls' }).click();
+  await page.getByRole('button', { name: 'Open Explore Atlas' }).click();
+
+  const atlas = page.getByRole('dialog', { name: 'Orbitim Explore Atlas' });
+  await atlas.getByRole('button', { name: 'Galaxies', exact: true }).click();
+  await atlas.getByRole('button', { name: /Find a deep-sky object/ }).click();
+  await expect(atlas.getByRole('heading', { name: 'Find a named deep-sky object' })).toBeVisible();
+  await atlas.getByRole('textbox', { name: 'Object name, e.g. M31 or NGC 1300' }).fill('M87');
+  await atlas.getByRole('button', { name: 'Resolve object' }).click();
+  await expect(atlas.getByText('MESSIER 087', { exact: true })).toBeVisible();
+  await expect(atlas.getByText('J2000 coordinates', { exact: true })).toBeVisible();
+  await expect(atlas.getByRole('link', { name: 'Open NED object record' })).toHaveAttribute('href', 'https://ned.ipac.caltech.edu/NED::API/OverviewOfObject?TARGET=M87');
+  await expect.poll(() => requestedUrls.some((value) => new URL(value).searchParams.get('q') === 'M87')).toBeTruthy();
+});
+
+test('Explore Atlas states when NASA/IPAC NED does not resolve an object name', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.route('**/api/deep-sky?*', async (route) => {
+    const requestUrl = new URL(route.request().url());
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        kind: 'not-found', query: requestUrl.searchParams.get('q'), aliases: [], record: null,
+        sourceUrl: 'https://ned.ipac.caltech.edu/Docs::API/', fetchedAt: '2026-07-29T12:00:00.000Z'
+      })
+    });
+  });
+
+  await enterSystem(page);
+  await page.getByRole('button', { name: 'Open scene controls' }).click();
+  await page.getByRole('button', { name: 'Open Explore Atlas' }).click();
+
+  const atlas = page.getByRole('dialog', { name: 'Orbitim Explore Atlas' });
+  await atlas.getByRole('button', { name: 'Galaxies', exact: true }).click();
+  await atlas.getByRole('button', { name: /Find a deep-sky object/ }).click();
+  await atlas.getByRole('textbox', { name: 'Object name, e.g. M31 or NGC 1300' }).fill('Not A Real Galaxy 1234');
+  await atlas.getByRole('button', { name: 'Resolve object' }).click();
+  await expect(atlas.getByText('NED did not resolve this as a known extragalactic object.')).toBeVisible();
+});
+
 test.describe('desktop Explore Atlas', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 

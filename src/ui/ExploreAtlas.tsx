@@ -7,6 +7,7 @@ import {
   type AtlasEvidence
 } from '../data/exploreAtlas';
 import { DeepSkyGallery } from './DeepSkyGallery';
+import { DeepSkyLookup } from './DeepSkyLookup';
 import { ExoplanetCatalog } from './ExoplanetCatalog';
 import { useLanguage } from './i18n';
 
@@ -283,6 +284,7 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
 
               {selected.id === 'confirmed-exoplanets' && <ExoplanetCatalog />}
               {selectedHasGallery && <div ref={galleryRef}><DeepSkyGallery /></div>}
+              {selected.id === 'deep-sky-search' && <DeepSkyLookup />}
             </div>
 
             <aside className="h-fit rounded-[1.5rem] border border-white/12 bg-[#07101e]/85 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl lg:sticky lg:top-6">

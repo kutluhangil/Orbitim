@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a bounded, source-linked current NASA/IPAC NED API deep-sky object resolver with explicit resolved and not-found states, VOTable validation and cancellation of superseded requests.
 - Added a credited, bilingual NASA deep-sky gallery for five named galaxies; each image, observation context and source link remains distinct from the simulated solar-system scene.
 - Added a source-cached NASA Exoplanet Archive catalogue with search, discovery-method filters, pagination and explicit unknown measurements inside Explore Atlas.
 - Added the bilingual Explore Atlas: a source-linked, distance-led reading layer over the live simulation, with 12 curated chapters and explicit observed/calculated/planned evidence labels.

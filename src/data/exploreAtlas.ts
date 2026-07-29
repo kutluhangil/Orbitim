@@ -82,10 +82,10 @@ export const ATLAS_ENTRIES: readonly AtlasEntry[] = [
     tr: { title: 'Yakın evren', eyebrow: 'Kürasyonlu derin uzay', summary: 'Her şeyi haritaladığını iddia etmeden önce küçük ve kredili bir galeriyi okuyun.', detail: 'Bu ilk galaksi sürümü, sınırsız küçük görsel duvarı yerine NASA görseli, uzaklık bağlamı ile bilim ve görsel-kayıt bağlantıları olan adlandırılmış nesneler kullanır.', facts: ['Kürasyonlu adlandırılmış nesneler', 'Her küçük görsel, görüntü kredisini belirtir', 'Uzaklık ve kırmızıya kayma araması sonraki fazda gelir'] }
   },
   {
-    id: 'deep-sky-search', chapter: 'galaxies', evidence: 'planned', distance: 'Object search',
-    source: { label: 'NASA/IPAC NED', url: 'https://ned.ipac.caltech.edu/Documents/Guides/Interface' },
-    en: { title: 'Find a deep-sky object', eyebrow: 'Next: bounded search', summary: 'Search by a known name or position, with a source rather than a synthetic result.', detail: 'Phase four uses NASA/IPAC NED behind a server route with a small result limit and cache. It is an object lookup, not a promise to load the observable universe.', facts: ['Name and coordinate lookup', 'Server-side rate and result limits', 'No “all galaxies” claim'] },
-    tr: { title: 'Bir derin uzay nesnesi bul', eyebrow: 'Sıradaki: sınırlı arama', summary: 'Bilinen ad veya konuma göre, sentetik sonuç yerine kaynaklı arama yapın.', detail: 'Faz dört NASA/IPAC NED’i küçük sonuç sınırı ve önbelleği olan bir sunucu rotası arkasında kullanır. Bu bir nesne bulma aracıdır; gözlemlenebilir evreni yükleme sözü değildir.', facts: ['Ad ve koordinat araması', 'Sunucu tarafında hız ve sonuç sınırları', '“Tüm galaksiler” iddiası yok'] }
+    id: 'deep-sky-search', chapter: 'galaxies', evidence: 'observed', distance: 'Object search',
+    source: { label: 'NASA/IPAC NED API', url: 'https://ned.ipac.caltech.edu/Docs::API/' },
+    en: { title: 'Find a deep-sky object', eyebrow: 'Live, bounded search', summary: 'Resolve a known object name with a source rather than a synthetic result.', detail: 'The current NASA/IPAC NED API runs behind a server route with one-name queries and a small cache. It is an object resolver, not a promise to load the observable universe.', facts: ['Name-based object lookup', 'Current NED API and source timestamp', 'No “all galaxies” claim'] },
+    tr: { title: 'Bir derin uzay nesnesi bul', eyebrow: 'Canlı, sınırlı arama', summary: 'Bilinen bir nesne adını sentetik sonuç yerine kaynakla çözümleyin.', detail: 'Güncel NASA/IPAC NED API, tek ad sorguları ve küçük önbelleği olan bir sunucu rotası arkasında çalışır. Bu bir nesne çözücüsüdür; gözlemlenebilir evreni yükleme sözü değildir.', facts: ['Ada dayalı nesne araması', 'Güncel NED API ve kaynak zaman damgası', '“Tüm galaksiler” iddiası yok'] }
   },
   {
     id: 'mission-eyes', chapter: 'evidence', evidence: 'observed', distance: 'Across missions',
