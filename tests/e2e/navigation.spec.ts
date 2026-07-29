@@ -339,6 +339,40 @@ test.describe('desktop Explore Atlas', () => {
     await expect(panel.getByText('0 reports', { exact: true }).first()).toBeVisible();
   });
 
+  test('Earth Now reads EONET catalogue geometry without presenting it as imagery', async ({ page }) => {
+    await page.route('**/api/earth-events', async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          source: 'NASA EONET · open natural events',
+          sourceUrl: 'https://eonet.gsfc.nasa.gov/docs/v3',
+          events: [
+            {
+              id: 'EONET-TEST-1', title: 'Test Wildfire', categories: ['Wildfires'],
+              observedAt: '2026-07-29T12:00:00.000Z', geometryType: 'Point',
+              position: { longitude: -102.8436111, latitude: 44.7638889 }, magnitudeValue: 510, magnitudeUnit: 'acres',
+              sourceUrl: 'https://example.test/events/test-wildfire'
+            }
+          ],
+          fetchedAt: '2026-07-29T12:05:00.000Z'
+        })
+      });
+    });
+
+    await enterDesktopSystem(page);
+    await page.getByRole('radio', { name: 'Now' }).click();
+    await page.getByRole('button', { name: 'Visit Earth' }).click();
+
+    const card = page.getByRole('region', { name: 'Open natural events' });
+    await expect(card).toBeVisible();
+    await expect(card.getByText('Catalogued', { exact: true })).toBeVisible();
+    await expect(card.getByText('Test Wildfire', { exact: true })).toBeVisible();
+    await expect(card.getByText('Wildfires', { exact: true })).toBeVisible();
+    await expect(card.getByText('44.76° N, 102.84° W · 510 acres', { exact: true })).toBeVisible();
+    await expect(card.getByText('Latest listed geometry is not satellite imagery or a verified incident boundary.', { exact: false })).toBeVisible();
+    await expect(card.getByRole('link', { name: 'Open source for Test Wildfire' })).toHaveAttribute('href', 'https://example.test/events/test-wildfire');
+  });
+
   test('Escape returns to the same selected world', async ({ page }) => {
     await enterDesktopSystem(page);
 

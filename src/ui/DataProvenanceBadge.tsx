@@ -1,9 +1,10 @@
-type Provenance = 'observed' | 'calculated' | 'predicted' | 'procedural' | 'unavailable';
+type Provenance = 'observed' | 'calculated' | 'predicted' | 'catalogued' | 'procedural' | 'unavailable';
 
 const STYLES: Record<Provenance, string> = {
   observed: 'border-sky-300/30 bg-sky-300/10 text-sky-100',
   calculated: 'border-violet-300/30 bg-violet-300/10 text-violet-100',
   predicted: 'border-amber-300/30 bg-amber-300/10 text-amber-100',
+  catalogued: 'border-teal-300/30 bg-teal-300/10 text-teal-100',
   procedural: 'border-slate-300/25 bg-slate-300/10 text-slate-200',
   unavailable: 'border-rose-300/30 bg-rose-300/10 text-rose-100'
 };

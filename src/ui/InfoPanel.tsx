@@ -11,6 +11,7 @@ import { useSiteSelection } from '../scene/siteSelection';
 import { useIsCompact } from './useMediaQuery';
 import { BodyDisc } from './BodyDisc';
 import { ObservationCard } from './ObservationCard';
+import { EarthEventsCard } from './EarthEventsCard';
 import { Row } from './Row';
 import { localizedBodyKind, localizedBodyName, useTranslation } from './i18n';
 
@@ -156,6 +157,7 @@ export function InfoPanel() {
         )}
 
         {nowMode && (target === 'earth' || target === 'sun') && <ObservationCard target={target} />}
+        {nowMode && target === 'earth' && <EarthEventsCard />}
 
         <section className="mb-5">
           <h3 className="mb-1 text-[10px] uppercase tracking-[0.22em] text-white/30">{t('factSheet')}</h3>
