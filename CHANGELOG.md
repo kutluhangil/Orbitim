@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added official NASA VTAD source models and direct 3D inspection flights for Voyager 1, Voyager 2 and New Horizons; Voyager's shared source model is used only for its physically twin spacecraft.
 - Added direct, accessible fly-to inspection for the official NASA VTAD Parker Solar Probe glTF render and a lightweight, source-documented 3D James Webb observatory model at their live ephemeris positions; both retain display-only size exaggeration in the AU-scale scene.
 - Made client calls to Vercel data routes diagnose non-JSON local/proxy responses explicitly, including the required Vercel development context instead of surfacing a raw JSON parser error.
 - Added a Playwright mobile regression suite for the consolidated scene cockpit, TR language change and Earth-to-Moon child dock, and updated project documentation to reflect the current body count and Vercel data routes.

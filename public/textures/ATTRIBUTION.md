@@ -100,6 +100,14 @@ model](https://science.nasa.gov/resource/parker-solar-probe-3d-model/). The
 scene centres and normalises the source mesh from its measured bounds; its
 position comes independently from the spacecraft ephemeris.
 
+`../models/voyager.glb` is the NASA VTAD published [Voyager glTF
+model](https://science.nasa.gov/resource/voyager-3d-model/), used for both
+Voyager 1 and Voyager 2 because the missions' spacecraft are twins.
+`../models/new-horizons.glb` is NASA VTAD's published [New Horizons glTF
+model](https://science.nasa.gov/resource/new-horizons-3d-model/). The three
+source models use their measured scene bounds for their display scale; their
+live locations continue to come from JPL Horizons state vectors.
+
 James Webb Space Telescope is rendered as a lightweight scene-native visual
 model of the deployed observatory, rather than as a substituted third-party
 asset. Its eighteen hexagonal primary-mirror segments, five-layer sunshield,

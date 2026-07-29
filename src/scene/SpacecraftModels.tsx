@@ -12,13 +12,19 @@ interface DeepSpaceCraftModelProps {
   displayRadius: number;
 }
 
+interface NasaSpacecraftModelProps {
+  url: string;
+  displayRadius: number;
+  rotation: [number, number, number];
+}
+
 /**
- * The official NASA VTAD Parker model is centred and scaled from its own
- * bounds, so a changed authoring unit in a later source file cannot make it
+ * NASA VTAD spacecraft sources are centred and scaled from their own bounds,
+ * so a changed authoring unit in a later source file cannot make a vehicle
  * vanish or overwhelm the scene.
  */
-function ParkerSolarProbeModel({ displayRadius }: { displayRadius: number }) {
-  const { scene } = useGLTF('/models/parker-solar-probe.glb');
+function NasaSpacecraftModel({ url, displayRadius, rotation }: NasaSpacecraftModelProps) {
+  const { scene } = useGLTF(url);
 
   const model = useMemo(() => {
     const clone = scene.clone(true);
@@ -26,12 +32,12 @@ function ParkerSolarProbeModel({ displayRadius }: { displayRadius: number }) {
 
     const bounds = new THREE.Box3().setFromObject(clone);
     const sphere = bounds.getBoundingSphere(new THREE.Sphere());
-    if (sphere.radius <= 0) throw new Error('NASA Parker Solar Probe model has no measurable bounds.');
+    if (sphere.radius <= 0) throw new Error(`NASA spacecraft model has no measurable bounds: ${url}`);
 
     const scale = displayRadius / sphere.radius;
     clone.scale.setScalar(scale);
     clone.position.copy(sphere.center).multiplyScalar(-scale);
-    clone.rotation.set(0.18, -0.42, 0.08);
+    clone.rotation.set(...rotation);
     clone.traverse((object) => {
       if (object instanceof THREE.Mesh) {
         object.castShadow = true;
@@ -39,7 +45,7 @@ function ParkerSolarProbeModel({ displayRadius }: { displayRadius: number }) {
       }
     });
     return clone;
-  }, [displayRadius, scene]);
+  }, [displayRadius, rotation, scene, url]);
 
   return <primitive object={model} />;
 }
@@ -137,9 +143,19 @@ function JamesWebbModel({ displayRadius }: { displayRadius: number }) {
 
 /** The source-backed Parker asset and Webb's documented deployed structure. */
 export function DeepSpaceCraftModel({ id, displayRadius }: DeepSpaceCraftModelProps) {
-  if (id === 'parker') return <ParkerSolarProbeModel displayRadius={displayRadius} />;
+  if (id === 'parker') {
+    return <NasaSpacecraftModel url="/models/parker-solar-probe.glb" displayRadius={displayRadius} rotation={[0.18, -0.42, 0.08]} />;
+  }
+  if (id === 'voyager1' || id === 'voyager2') {
+    return <NasaSpacecraftModel url="/models/voyager.glb" displayRadius={displayRadius} rotation={[0.2, -0.58, 0.06]} />;
+  }
+  if (id === 'newhorizons') {
+    return <NasaSpacecraftModel url="/models/new-horizons.glb" displayRadius={displayRadius} rotation={[0.12, -0.48, -0.08]} />;
+  }
   if (id === 'jwst') return <JamesWebbModel displayRadius={displayRadius} />;
   return null;
 }
 
 useGLTF.preload('/models/parker-solar-probe.glb');
+useGLTF.preload('/models/voyager.glb');
+useGLTF.preload('/models/new-horizons.glb');

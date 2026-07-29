@@ -33,10 +33,18 @@ test('Earth exposes the Moon through its child dock', async ({ page }) => {
   await expect(moonDock.getByRole('button', { name: 'Visit Moon' })).toBeVisible();
 });
 
-test('NASA Parker 3D model is served to the live WebGL scene', async ({ page }) => {
-  const response = await page.request.get('/models/parker-solar-probe.glb');
-  expect(response.ok()).toBeTruthy();
-  expect(Number(response.headers()['content-length'] ?? '0')).toBeGreaterThan(6_000_000);
+test('NASA deep-space 3D models are served to the live WebGL scene', async ({ page }) => {
+  const models = [
+    ['/models/parker-solar-probe.glb', 6_000_000],
+    ['/models/voyager.glb', 2_500_000],
+    ['/models/new-horizons.glb', 3_000_000]
+  ] as const;
+
+  for (const [url, minimumBytes] of models) {
+    const response = await page.request.get(url);
+    expect(response.ok()).toBeTruthy();
+    expect(Number(response.headers()['content-length'] ?? '0')).toBeGreaterThan(minimumBytes);
+  }
 
   await page.goto('/');
   await expect(page.locator('canvas')).toBeVisible();
@@ -52,4 +60,12 @@ test('Parker label opens and leaves a 3D inspection flight', async ({ page }) =>
 
   await page.keyboard.press('Escape');
   await expect(inspectParker).toBeVisible();
+});
+
+test('every deep-space craft exposes a 3D inspection control', async ({ page }) => {
+  await enterSystem(page);
+
+  for (const craft of ['Voyager 1', 'Voyager 2', 'New Horizons', 'Parker Solar Probe', 'James Webb']) {
+    await expect(page.getByRole('button', { name: `Inspect 3D model of ${craft}` })).toBeVisible();
+  }
 });

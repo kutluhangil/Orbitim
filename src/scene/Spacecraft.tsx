@@ -15,11 +15,11 @@ import { useTranslation } from '../ui/i18n';
 /**
  * Live deep-space craft — the Voyagers, New Horizons, Parker and JWST — placed
  * from real trajectory data (see data/spacecraft.ts). A ring marker sets them
- * apart from the dwarf-planet dots. Parker and Webb also carry a model: their
- * vehicle geometry is deliberately display-scaled because kilometre-scale craft
- * cannot be physically visible alongside AU-scale orbits. Each label carries
- * its live distance from the Sun, updated directly on the DOM node so the
- * readout never forces a React re-render.
+ * apart from the dwarf-planet dots. Every craft carries a model: their vehicle
+ * geometry is deliberately display-scaled because kilometre-scale craft cannot
+ * be physically visible alongside AU-scale orbits. Each label carries its live
+ * distance from the Sun, updated directly on the DOM node so the readout never
+ * forces a React re-render.
  */
 
 /** A hollow ring, drawn once and shared, so a craft reads as a marker not a world. */
@@ -74,11 +74,8 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
   const selectedId = useSpacecraftSelection((state) => state.selectedId);
   const select = useSpacecraftSelection((state) => state.select);
   const { t } = useTranslation();
-  const hasVehicleModel = craft.id === 'parker' || craft.id === 'jwst';
-  const isInspectable = hasVehicleModel;
 
   const inspect = () => {
-    if (!isInspectable) return;
     select(craft.id);
     returnToOverview();
   };
@@ -124,12 +121,11 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
 
       <group
         ref={group}
-        onClick={isInspectable ? (event) => {
+        onClick={(event) => {
           event.stopPropagation();
           inspect();
-        } : undefined}
+        }}
         onPointerOver={(event) => {
-          if (!isInspectable) return;
           event.stopPropagation();
           document.body.style.cursor = 'pointer';
         }}
@@ -137,37 +133,32 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
           document.body.style.cursor = '';
         }}
       >
-        <sprite scale={[hasVehicleModel ? 1.85 : 1.5, hasVehicleModel ? 1.85 : 1.5, hasVehicleModel ? 1.85 : 1.5]}>
+        <sprite scale={[1.85, 1.85, 1.85]}>
           <spriteMaterial map={ring} color={craft.color} transparent depthWrite={false} />
         </sprite>
 
-        {isInspectable && (
-          <mesh>
-            <sphereGeometry args={[3.2, 16, 12]} />
-            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-          </mesh>
-        )}
+        <mesh>
+          <sphereGeometry args={[3.2, 16, 12]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
 
-        {hasVehicleModel && (
-          <Suspense fallback={null}>
-            <DeepSpaceCraftModel id={craft.id} displayRadius={craft.id === 'jwst' ? 1.35 : 1.15} />
-          </Suspense>
-        )}
+        <Suspense fallback={null}>
+          <DeepSpaceCraftModel
+            id={craft.id}
+            displayRadius={craft.id === 'jwst' ? 1.35 : craft.id.startsWith('voyager') ? 1.28 : 1.15}
+          />
+        </Suspense>
 
         {phase === 'overview' && selectedId !== craft.id && (
           <Html position={[0, 1.6, 0]} center distanceFactor={48} zIndexRange={[10, 0]}>
-            {isInspectable ? (
-              <button
-                type="button"
-                onClick={inspect}
-                aria-label={t('inspectSpacecraft', { craft: craft.name })}
-                className="flex cursor-pointer flex-col items-center rounded-md px-1.5 py-1 leading-tight transition-colors hover:bg-black/35 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-200/70"
-              >
-                {labelContent}
-              </button>
-            ) : (
-              <div className="pointer-events-none flex flex-col items-center leading-tight">{labelContent}</div>
-            )}
+            <button
+              type="button"
+              onClick={inspect}
+              aria-label={t('inspectSpacecraft', { craft: craft.name })}
+              className="flex cursor-pointer flex-col items-center rounded-md px-1.5 py-1 leading-tight transition-colors hover:bg-black/35 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-200/70"
+            >
+              {labelContent}
+            </button>
           </Html>
         )}
 
