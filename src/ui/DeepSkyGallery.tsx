@@ -1,5 +1,5 @@
 import { ArrowUpRight, ImageIcon, ImageOff } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DEEP_SKY_TARGETS, deepSkyText } from '../data/deepSky';
 import { useLanguage } from './i18n';
 
@@ -76,7 +76,7 @@ export function DeepSkyGallery() {
       </ul>
 
       <article id="deep-sky-selected" aria-label={copy.selected} className="mt-5 overflow-hidden rounded-2xl border border-white/12 bg-white/[0.025] sm:grid sm:grid-cols-[minmax(12rem,0.85fr)_minmax(0,1.15fr)]">
-        <NasaImage target={selected} alt={selectedText.imageAlt} unavailable={copy.unavailable} className="h-full min-h-52 w-full bg-slate-950 object-contain" />
+        <NasaImage target={selected} alt={selectedText.imageAlt} unavailable={copy.unavailable} className="h-full min-h-52 w-full bg-slate-950 object-contain" priority />
         <div className="p-5 sm:p-6">
           <p className="sr-only" aria-live="polite" aria-atomic="true">{copy.selected}: {selectedText.name}</p>
           <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-amber-200/80">{selectedText.type}</p>
@@ -107,8 +107,9 @@ export function DeepSkyGallery() {
   );
 }
 
-function NasaImage({ target, alt, unavailable, className }: { target: (typeof DEEP_SKY_TARGETS)[number]; alt: string; unavailable: string; className: string }) {
+function NasaImage({ target, alt, unavailable, className, priority = false }: { target: (typeof DEEP_SKY_TARGETS)[number]; alt: string; unavailable: string; className: string; priority?: boolean }) {
   const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [target.imageUrl]);
   if (failed) {
     return (
       <div aria-label={unavailable} className={`${className} flex items-center justify-center bg-slate-950 px-4 text-center text-[11px] leading-5 text-slate-400`}>
@@ -117,5 +118,5 @@ function NasaImage({ target, alt, unavailable, className }: { target: (typeof DE
       </div>
     );
   }
-  return <img src={target.imageUrl} alt={alt} loading="lazy" onError={() => setFailed(true)} className={className} />;
+  return <img src={target.imageUrl} alt={alt} loading={priority ? 'eager' : 'lazy'} decoding="async" onError={() => setFailed(true)} className={className} />;
 }

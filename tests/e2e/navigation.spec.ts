@@ -147,6 +147,17 @@ test('Explore Atlas keeps credited NASA galaxy observations distinct from the si
   await expect(selected.getByRole('link', { name: 'Read NGC 1300' })).toHaveAttribute('href', 'https://science.nasa.gov/image-detail/ngc-1300/');
 });
 
+test('Explore Atlas reveals a selected galaxy gallery after its module loads on mobile', async ({ page }) => {
+  test.setTimeout(60_000);
+  await enterSystem(page);
+  await page.getByRole('button', { name: 'Open scene controls' }).click();
+  await page.getByRole('button', { name: 'Open Explore Atlas' }).click();
+
+  const atlas = page.getByRole('dialog', { name: 'Orbitim Explore Atlas' });
+  await atlas.getByRole('button', { name: 'Open atlas entry: Galaxy kinds' }).click();
+  await expect(atlas.getByRole('heading', { name: 'A nearby-universe field guide' })).toBeInViewport();
+});
+
 test('Explore Atlas resolves a bounded NASA/IPAC NED object lookup', async ({ page }) => {
   test.setTimeout(60_000);
   const requestedUrls: string[] = [];

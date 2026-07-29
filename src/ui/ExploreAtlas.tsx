@@ -1,15 +1,16 @@
 import { ArrowUpRight, BookOpen, CircleDot, Compass, Eye, Orbit, Telescope, X } from 'lucide-react';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ATLAS_ENTRIES,
   atlasText,
   type AtlasChapter,
   type AtlasEvidence
 } from '../data/exploreAtlas';
-import { DeepSkyGallery } from './DeepSkyGallery';
-import { DeepSkyLookup } from './DeepSkyLookup';
-import { ExoplanetCatalog } from './ExoplanetCatalog';
 import { useLanguage } from './i18n';
+
+const ExoplanetCatalog = lazy(() => import('./ExoplanetCatalog').then(({ ExoplanetCatalog: Component }) => ({ default: Component })));
+const DeepSkyGallery = lazy(() => import('./DeepSkyGallery').then(({ DeepSkyGallery: Component }) => ({ default: Component })));
+const DeepSkyLookup = lazy(() => import('./DeepSkyLookup').then(({ DeepSkyLookup: Component }) => ({ default: Component })));
 
 interface ExploreAtlasProps {
   onClose: () => void;
@@ -36,7 +37,7 @@ const CHAPTER_COPY = {
     observed: 'Observed source',
     derived: 'Calculated / interpreted',
     planned: 'Live archive next',
-    current: 'Phase 1 · atlas foundation',
+    current: 'Atlas · live and credited sources',
     unknown: 'Unknown remains unknown.',
     routeLabels: ['Local geometry', 'Neighbouring stars', 'Deep sky']
   },
@@ -58,7 +59,7 @@ const CHAPTER_COPY = {
     observed: 'Gözlemlenmiş kaynak',
     derived: 'Hesaplanmış / yorumlanmış',
     planned: 'Canlı arşiv sırada',
-    current: 'Faz 1 · atlas temeli',
+    current: 'Atlas · canlı ve kredili kaynaklar',
     unknown: 'Bilinmeyen, bilinmeyen kalır.',
     routeLabels: ['Yerel geometri', 'Komşu yıldızlar', 'Derin uzay']
   }
@@ -112,6 +113,12 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const galleryRef = useRef<HTMLDivElement>(null);
   const pendingMobileGalleryReveal = useRef(false);
+  const [galleryReady, setGalleryReady] = useState(false);
+
+  const attachGalleryRef = useCallback((node: HTMLDivElement | null) => {
+    galleryRef.current = node;
+    setGalleryReady(node !== null);
+  }, []);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -154,7 +161,7 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
   const selectedHasGallery = selected.id === 'galaxy-kinds' || selected.id === 'nearby-galaxies';
 
   useEffect(() => {
-    if (!pendingMobileGalleryReveal.current || !selectedHasGallery) return;
+    if (!pendingMobileGalleryReveal.current || !selectedHasGallery || !galleryReady || !galleryRef.current) return;
     pendingMobileGalleryReveal.current = false;
     if (!window.matchMedia('(max-width: 1023px)').matches) return;
     const frame = window.requestAnimationFrame(() => {
@@ -164,7 +171,7 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
       });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [selectedHasGallery, selectedId]);
+  }, [galleryReady, selectedHasGallery, selectedId]);
 
   const selectChapter = (nextChapter: AtlasChapter | 'all') => {
     setChapter(nextChapter);
@@ -282,9 +289,13 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
                 })}
               </div>
 
-              {selected.id === 'confirmed-exoplanets' && <ExoplanetCatalog />}
-              {selectedHasGallery && <div ref={galleryRef}><DeepSkyGallery /></div>}
-              {selected.id === 'deep-sky-search' && <DeepSkyLookup />}
+              {(selected.id === 'confirmed-exoplanets' || selectedHasGallery || selected.id === 'deep-sky-search') && (
+                <Suspense fallback={<AtlasModuleLoading language={language} />}>
+                  {selected.id === 'confirmed-exoplanets' && <ExoplanetCatalog />}
+                  {selectedHasGallery && <div ref={attachGalleryRef}><DeepSkyGallery /></div>}
+                  {selected.id === 'deep-sky-search' && <DeepSkyLookup />}
+                </Suspense>
+              )}
             </div>
 
             <aside className="h-fit rounded-[1.5rem] border border-white/12 bg-[#07101e]/85 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl lg:sticky lg:top-6">
@@ -330,6 +341,14 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
         </main>
       </div>
     </section>
+  );
+}
+
+function AtlasModuleLoading({ language }: { language: 'en' | 'tr' }) {
+  return (
+    <div role="status" className="mt-10 flex min-h-32 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.025] px-5 text-center font-mono text-[10px] uppercase tracking-[0.16em] text-slate-400">
+      {language === 'tr' ? 'Kaynak görünümü yükleniyor…' : 'Loading source view…'}
+    </div>
   );
 }
 
