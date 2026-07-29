@@ -14,6 +14,7 @@ import { MobileCockpitControl } from './ui/MobileCockpitControl';
 import { EventTimeline } from './ui/EventTimeline';
 import { ExploreAtlas } from './ui/ExploreAtlas';
 import { DataHealthPanel } from './ui/DataHealthPanel';
+import { TimeJourneys } from './ui/TimeJourneys';
 import { useFlight } from './flight/useFlight';
 import { SatellitePanel } from './ui/SatellitePanel';
 import { SatelliteInfo } from './ui/SatelliteInfo';
@@ -37,8 +38,10 @@ function App() {
   const [entered, setEntered] = useState(false);
   const [atlasOpen, setAtlasOpen] = useState(false);
   const [dataHealthOpen, setDataHealthOpen] = useState(false);
+  const [journeysOpen, setJourneysOpen] = useState(false);
   const atlasTrigger = useRef<HTMLElement | null>(null);
   const dataHealthTrigger = useRef<HTMLElement | null>(null);
+  const journeysTrigger = useRef<HTMLElement | null>(null);
   const returnToOverview = useFlight((s) => s.returnToOverview);
   const satellite = useSatelliteSelection((s) => s.selected);
   const mode = useViewSettings((s) => s.mode);
@@ -92,7 +95,7 @@ function App() {
   useEffect(() => {
     if (!entered) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || atlasOpen || dataHealthOpen) return;
+      if (event.key !== 'Escape' || atlasOpen || dataHealthOpen || journeysOpen) return;
 
       const selection = useSatelliteSelection.getState();
       if (selection.selected) {
@@ -110,7 +113,7 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [atlasOpen, dataHealthOpen, entered, returnToOverview]);
+  }, [atlasOpen, dataHealthOpen, entered, journeysOpen, returnToOverview]);
 
   const openAtlas = () => {
     atlasTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -132,11 +135,21 @@ function App() {
     window.requestAnimationFrame(() => dataHealthTrigger.current?.focus());
   };
 
+  const openJourneys = () => {
+    journeysTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setJourneysOpen(true);
+  };
+
+  const closeJourneys = () => {
+    setJourneysOpen(false);
+    window.requestAnimationFrame(() => journeysTrigger.current?.focus());
+  };
+
   return (
     /* Dynamic viewport units: on a phone `100vh` is the tallest the browser
        chrome ever gets, which leaves the scene cropped under the address bar. */
     <div className="relative h-[100dvh] w-screen overflow-hidden bg-black text-white antialiased">
-      <div id="simulation-shell" className="contents" aria-hidden={atlasOpen || dataHealthOpen || undefined} inert={atlasOpen || dataHealthOpen || undefined}>
+      <div id="simulation-shell" className="contents" aria-hidden={atlasOpen || dataHealthOpen || journeysOpen || undefined} inert={atlasOpen || dataHealthOpen || journeysOpen || undefined}>
       <SceneRoot />
 
       {entered ? (
@@ -152,8 +165,8 @@ function App() {
           <LaplacePanel />
           <SatellitePanel />
           <ExperienceModeControl />
-          <ViewControls onOpenAtlas={openAtlas} onOpenDataHealth={openDataHealth} />
-          <MobileCockpitControl onOpenAtlas={openAtlas} onOpenDataHealth={openDataHealth} />
+          <ViewControls onOpenAtlas={openAtlas} onOpenDataHealth={openDataHealth} onOpenJourneys={openJourneys} />
+          <MobileCockpitControl onOpenAtlas={openAtlas} onOpenDataHealth={openDataHealth} onOpenJourneys={openJourneys} />
           <TimeControls />
         </>
       ) : (
@@ -162,6 +175,7 @@ function App() {
       </div>
       {atlasOpen && <ExploreAtlas onClose={closeAtlas} />}
       {dataHealthOpen && <DataHealthPanel onClose={closeDataHealth} />}
+      {journeysOpen && <TimeJourneys onClose={closeJourneys} />}
     </div>
   );
 }

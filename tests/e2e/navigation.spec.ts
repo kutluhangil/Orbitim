@@ -58,6 +58,23 @@ test('scene exposes a recoverable WebGL context state', async ({ page }) => {
   await expect(page.getByRole('status')).toBeHidden();
 });
 
+test('a Time Journey pauses the cited instant and starts a continuous body flight', async ({ page }) => {
+  await enterSystem(page);
+
+  await page.getByRole('button', { name: 'Open scene controls' }).click();
+  await page.getByRole('button', { name: 'Open time journeys' }).click();
+
+  const journeys = page.getByRole('dialog', { name: 'Revisit a measured moment.' });
+  await expect(journeys).toBeVisible();
+  await expect(journeys.getByText('Apollo 11 · Tranquility Base', { exact: true })).toBeVisible();
+  await expect(journeys.getByText('lunar-module trajectory is not rendered', { exact: false })).toBeVisible();
+
+  await journeys.getByRole('button', { name: 'Begin journey: Apollo 11 · Tranquility Base' }).click();
+  await expect(journeys).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Resume simulated time' })).toBeVisible();
+  await expect.poll(() => new URL(page.url()).hash).toContain('t=1969-07-20T20%3A17%3A40Z');
+});
+
 test('Earth exposes the Moon through its child dock', async ({ page }) => {
   await enterSystem(page);
 

@@ -251,6 +251,8 @@ const EN = {
   ,openAtlas: 'Open Explore Atlas'
   ,dataHealth: 'Data health'
   ,openDataHealth: 'Open data health'
+  ,journeys: 'Journeys'
+  ,openJourneys: 'Open time journeys'
 } as const;
 
 type TranslationKey = keyof typeof EN;
@@ -466,6 +468,8 @@ const TR: Record<TranslationKey, string> = {
   ,openAtlas: 'Keşfet Atlasını aç'
   ,dataHealth: 'Veri sağlığı'
   ,openDataHealth: 'Veri sağlığını aç'
+  ,journeys: 'Yolculuklar'
+  ,openJourneys: 'Zaman yolculuklarını aç'
 };
 
 const TRANSLATIONS: Record<AppLanguage, Record<TranslationKey, string>> = { en: EN, tr: TR };

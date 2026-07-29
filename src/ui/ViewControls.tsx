@@ -1,4 +1,4 @@
-import { Activity, Compass, Moon, Orbit, Sun, Waypoints } from 'lucide-react';
+import { Activity, Compass, Moon, Orbit, Route, Sun, Waypoints } from 'lucide-react';
 import { useViewSettings } from '../scene/viewSettings';
 import { ShareLink } from './ShareLink';
 import { useLanguage, useTranslation } from './i18n';
@@ -13,9 +13,10 @@ import { useLanguage, useTranslation } from './i18n';
 interface ViewControlsProps {
   onOpenAtlas: () => void;
   onOpenDataHealth: () => void;
+  onOpenJourneys: () => void;
 }
 
-export function ViewControls({ onOpenAtlas, onOpenDataHealth }: ViewControlsProps) {
+export function ViewControls({ onOpenAtlas, onOpenDataHealth, onOpenJourneys }: ViewControlsProps) {
   const orbitsVisible = useViewSettings((s) => s.orbitsVisible);
   const toggleOrbits = useViewSettings((s) => s.toggleOrbits);
   const figuresVisible = useViewSettings((s) => s.figuresVisible);
@@ -40,6 +41,17 @@ export function ViewControls({ onOpenAtlas, onOpenDataHealth }: ViewControlsProp
       >
         <Compass className="h-4 w-4" aria-hidden />
         {t('atlas')}
+      </button>
+
+      <button
+        type="button"
+        onClick={onOpenJourneys}
+        aria-label={t('openJourneys')}
+        title={t('openJourneys')}
+        className="pointer-events-auto flex h-10 items-center gap-2 rounded-full border border-white/10 bg-black/70 px-3.5 text-[10px] uppercase tracking-[0.16em] text-white/70 backdrop-blur-xl transition-colors hover:border-sky-300/50 hover:text-sky-100"
+      >
+        <Route className="h-4 w-4" aria-hidden />
+        {t('journeys')}
       </button>
 
       <button

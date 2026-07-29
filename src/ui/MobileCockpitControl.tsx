@@ -1,4 +1,4 @@
-import { Activity, Compass, Languages, Moon, Orbit, PanelTopClose, SlidersHorizontal, Sun, Waypoints } from 'lucide-react';
+import { Activity, Compass, Languages, Moon, Orbit, PanelTopClose, Route, SlidersHorizontal, Sun, Waypoints } from 'lucide-react';
 import { type KeyboardEvent, useState } from 'react';
 import { type ExperienceMode, useViewSettings } from '../scene/viewSettings';
 import { useSimTime } from '../scene/useSimTime';
@@ -12,9 +12,10 @@ import { useLanguage, useTranslation } from './i18n';
 interface MobileCockpitControlProps {
   onOpenAtlas: () => void;
   onOpenDataHealth: () => void;
+  onOpenJourneys: () => void;
 }
 
-export function MobileCockpitControl({ onOpenAtlas, onOpenDataHealth }: MobileCockpitControlProps) {
+export function MobileCockpitControl({ onOpenAtlas, onOpenDataHealth, onOpenJourneys }: MobileCockpitControlProps) {
   const [open, setOpen] = useState(false);
   const mode = useViewSettings((state) => state.mode);
   const setMode = useViewSettings((state) => state.setMode);
@@ -131,6 +132,19 @@ export function MobileCockpitControl({ onOpenAtlas, onOpenDataHealth }: MobileCo
           >
             <Compass className="h-4 w-4" aria-hidden />
             {t('atlas')}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onOpenJourneys();
+            }}
+            aria-label={t('openJourneys')}
+            className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] text-[9px] uppercase tracking-[0.16em] text-white/62 transition-colors hover:border-sky-300/40 hover:text-sky-100"
+          >
+            <Route className="h-4 w-4" aria-hidden />
+            {t('journeys')}
           </button>
 
           <button
