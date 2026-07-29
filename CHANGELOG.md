@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added seven NASA DONKI solar-impact feeds for energetic particles, heliospheric shocks and streams, radiation-belt and magnetopause events, research notices and WSA–Enlil model runs; the interface now marks observed events, research reports, model output and unavailable sources separately.
+- Moved the desktop experience-mode selector below the top control row so Now, Scientific and Explore remain directly clickable at practical laptop widths.
 - Added shareable selected-body and evidence-mode URL state without observer coordinates, a source-neutral local civil clock for each observer preset, and measurement-only Earth-reference bars in the NASA Exoplanet Archive Atlas cards.
 - Added a bounded, source-timestamped JPL Small-Body Database explorer for named asteroids and comets, including published orbit/physical fields and explicitly non-predictive Earth-approach records.
 - Added six bilingual, NASA-source-linked Time Journeys that pause the calculated scene at cited UTC moments and state the boundary between body ephemerides and unrendered historical spacecraft paths.

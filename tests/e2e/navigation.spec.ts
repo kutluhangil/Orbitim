@@ -306,6 +306,39 @@ test('Explore Atlas states when NASA/IPAC NED does not resolve an object name', 
 test.describe('desktop Explore Atlas', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
+  test('Now mode keeps observed, reported and modelled solar impact feeds distinct', async ({ page }) => {
+    await page.route('**/api/space-weather', async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          flares: [], cmes: [], storms: [],
+          impactStreams: [
+            { id: 'energeticParticles', endpoint: 'SEP', evidence: 'observed', reports: [{ sepID: 'SEP-1' }], error: null },
+            { id: 'interplanetaryShocks', endpoint: 'IPS', evidence: 'observed', reports: [{ activityID: 'IPS-1' }], error: null },
+            { id: 'highSpeedStreams', endpoint: 'HSS', evidence: 'observed', reports: [], error: null },
+            { id: 'radiationBelts', endpoint: 'RBE', evidence: 'observed', reports: [], error: null },
+            { id: 'magnetopauseCrossings', endpoint: 'MPC', evidence: 'observed', reports: [], error: null },
+            { id: 'notifications', endpoint: 'notifications', evidence: 'reported', reports: [{ messageID: 'NOTICE-1' }], error: null },
+            { id: 'enlilSimulations', endpoint: 'WSAEnlilSimulations', evidence: 'modelled', reports: [], error: 'NASA DONKI WSAEnlilSimulations request failed with HTTP 503: maintenance' }
+          ],
+          fetchedAt: '2026-07-29T12:00:00.000Z', source: 'NASA DONKI'
+        })
+      });
+    });
+
+    await enterDesktopSystem(page);
+    await page.getByRole('radio', { name: 'Now' }).click();
+
+    const panel = page.getByRole('complementary', { name: 'Solar weather' });
+    await expect(panel).toBeVisible();
+    await expect(panel.getByText('Solar impact ledger', { exact: true })).toBeVisible();
+    await expect(panel.getByText('Energetic particles', { exact: true })).toBeVisible();
+    await expect(panel.getByText('Observed event', { exact: true }).first()).toBeVisible();
+    await expect(panel.getByText('Research notice', { exact: true })).toBeVisible();
+    await expect(panel.getByText('Source unavailable', { exact: true })).toBeVisible();
+    await expect(panel.getByText('0 reports', { exact: true }).first()).toBeVisible();
+  });
+
   test('Escape returns to the same selected world', async ({ page }) => {
     await enterDesktopSystem(page);
 

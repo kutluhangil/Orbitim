@@ -49,11 +49,33 @@ export interface GeomagneticActivity {
   observedTime: Date | null;
 }
 
+export const SOLAR_IMPACT_STREAM_IDS = [
+  'energeticParticles',
+  'interplanetaryShocks',
+  'highSpeedStreams',
+  'radiationBelts',
+  'magnetopauseCrossings',
+  'notifications',
+  'enlilSimulations'
+] as const;
+
+export type SolarImpactStreamId = (typeof SOLAR_IMPACT_STREAM_IDS)[number];
+export type SolarImpactEvidence = 'observed' | 'reported' | 'modelled';
+
+export interface SolarImpactStream {
+  id: SolarImpactStreamId;
+  endpoint: string;
+  evidence: SolarImpactEvidence;
+  reportCount: number;
+  sourceError: string | null;
+}
+
 export interface SpaceWeatherSnapshot {
   fetchedAt: Date;
   latestFlare: SolarFlare | null;
   latestCme: CoronalMassEjection | null;
   latestGeomagneticActivity: GeomagneticActivity | null;
+  impactStreams: SolarImpactStream[];
 }
 
 function parseNasaDate(value: string | undefined, field: string): Date {
@@ -76,10 +98,54 @@ interface DonkiPayload {
   flares?: unknown;
   cmes?: unknown;
   storms?: unknown;
+  impactStreams?: unknown;
   fetchedAt?: unknown;
   source?: unknown;
   error?: unknown;
   detail?: unknown;
+}
+
+interface DonkiImpactStreamPayload {
+  id?: unknown;
+  endpoint?: unknown;
+  evidence?: unknown;
+  reports?: unknown;
+  error?: unknown;
+}
+
+function isImpactStreamId(value: unknown): value is SolarImpactStreamId {
+  return typeof value === 'string' && (SOLAR_IMPACT_STREAM_IDS as readonly string[]).includes(value);
+}
+
+function isImpactEvidence(value: unknown): value is SolarImpactEvidence {
+  return value === 'observed' || value === 'reported' || value === 'modelled';
+}
+
+function parseImpactStreams(value: unknown): SolarImpactStream[] {
+  if (!Array.isArray(value)) throw new Error('NASA solar weather response is missing impactStreams.');
+
+  const parsed = value.map((raw) => {
+    const stream = raw as DonkiImpactStreamPayload;
+    if (!stream || typeof stream !== 'object' || !isImpactStreamId(stream.id) || typeof stream.endpoint !== 'string' || !isImpactEvidence(stream.evidence) || !Array.isArray(stream.reports)) {
+      throw new Error('NASA solar weather response contains an invalid impact stream.');
+    }
+    if (stream.error !== null && typeof stream.error !== 'string') {
+      throw new Error(`NASA solar weather response contains an invalid ${stream.id} error state.`);
+    }
+    return {
+      id: stream.id,
+      endpoint: stream.endpoint,
+      evidence: stream.evidence,
+      reportCount: stream.reports.length,
+      sourceError: stream.error
+    };
+  });
+
+  const ids = new Set(parsed.map((stream) => stream.id));
+  if (parsed.length !== SOLAR_IMPACT_STREAM_IDS.length || SOLAR_IMPACT_STREAM_IDS.some((id) => !ids.has(id))) {
+    throw new Error('NASA solar weather response does not contain the complete impact-stream catalogue.');
+  }
+  return parsed;
 }
 
 function toSolarFlare(record: NasaFlare): SolarFlare {
@@ -134,11 +200,13 @@ export async function fetchSpaceWeather(signal?: AbortSignal): Promise<SpaceWeat
   const parsedFlares = flares.map(toSolarFlare);
   const parsedCmes = cmes.map(toCme);
   const parsedStorms = storms.map(toGeomagneticActivity);
+  const impactStreams = parseImpactStreams(payload.impactStreams);
 
   return {
     fetchedAt,
     latestFlare: latestByDate(parsedFlares, (flare) => flare.peakTime),
     latestCme: latestByDate(parsedCmes, (cme) => cme.startTime),
-    latestGeomagneticActivity: latestByDate(parsedStorms, (storm) => storm.startTime)
+    latestGeomagneticActivity: latestByDate(parsedStorms, (storm) => storm.startTime),
+    impactStreams
   };
 }

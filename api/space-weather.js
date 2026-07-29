@@ -1,5 +1,15 @@
 const DONKI_BASE_URL = 'https://api.nasa.gov/DONKI';
 
+const IMPACT_STREAMS = [
+  { id: 'energeticParticles', endpoint: 'SEP', evidence: 'observed' },
+  { id: 'interplanetaryShocks', endpoint: 'IPS', evidence: 'observed' },
+  { id: 'highSpeedStreams', endpoint: 'HSS', evidence: 'observed' },
+  { id: 'radiationBelts', endpoint: 'RBE', evidence: 'observed' },
+  { id: 'magnetopauseCrossings', endpoint: 'MPC', evidence: 'observed' },
+  { id: 'notifications', endpoint: 'notifications', evidence: 'reported' },
+  { id: 'enlilSimulations', endpoint: 'WSAEnlilSimulations', evidence: 'modelled' }
+];
+
 function formatUtcDate(date) {
   return date.toISOString().slice(0, 10);
 }
@@ -21,6 +31,24 @@ async function requestDonki(endpoint, startDate, endDate, apiKey) {
   }
 }
 
+/**
+ * A secondary DONKI feed must not turn a usable core report into a falsely
+ * quiet dashboard. Any unavailable feed is returned with its explicit source
+ * error so the client can distinguish "zero reports" from "not available".
+ */
+async function requestImpactStream(stream, startDate, endDate, apiKey) {
+  try {
+    const reports = await requestDonki(stream.endpoint, startDate, endDate, apiKey);
+    return { ...stream, reports, error: null };
+  } catch (cause) {
+    return {
+      ...stream,
+      reports: [],
+      error: cause instanceof Error ? cause.message : String(cause)
+    };
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Only GET is supported.' });
   const apiKey = process.env.NASA_API_KEY;
@@ -33,13 +61,21 @@ export default async function handler(req, res) {
   const endDate = formatUtcDate(now);
 
   try {
-    const [flares, cmes, storms] = await Promise.all([
+    const [flares, cmes, storms, impactStreams] = await Promise.all([
       requestDonki('FLR', startDate, endDate, apiKey),
       requestDonki('CME', startDate, endDate, apiKey),
-      requestDonki('GST', startDate, endDate, apiKey)
+      requestDonki('GST', startDate, endDate, apiKey),
+      Promise.all(IMPACT_STREAMS.map((stream) => requestImpactStream(stream, startDate, endDate, apiKey)))
     ]);
     res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=300');
-    return res.status(200).json({ flares, cmes, storms, fetchedAt: now.toISOString(), source: 'NASA DONKI' });
+    return res.status(200).json({
+      flares,
+      cmes,
+      storms,
+      impactStreams,
+      fetchedAt: now.toISOString(),
+      source: 'NASA DONKI'
+    });
   } catch (cause) {
     return res.status(502).json({ error: 'NASA solar weather request failed.', detail: cause instanceof Error ? cause.message : String(cause) });
   }

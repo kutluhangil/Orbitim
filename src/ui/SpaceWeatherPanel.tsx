@@ -1,7 +1,12 @@
 import { RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useFlight } from '../flight/useFlight';
-import { fetchSpaceWeather, type SpaceWeatherSnapshot } from '../services/nasaDonki';
+import {
+  fetchSpaceWeather,
+  type SolarImpactEvidence,
+  type SolarImpactStream,
+  type SpaceWeatherSnapshot
+} from '../services/nasaDonki';
 import { useSolarActivity } from '../scene/solarActivity';
 import { useViewSettings } from '../scene/viewSettings';
 import { type AppLanguage, useTranslation } from './i18n';
@@ -47,6 +52,31 @@ function details(
       detail: storm ? formatTime(storm.observedTime ?? storm.startTime, language) : t('noStormLast14Days')
     }
   ];
+}
+
+function impactStreamLabel(stream: SolarImpactStream, t: ReturnType<typeof useTranslation>['t']): string {
+  const labels = {
+    energeticParticles: 'energeticParticles',
+    interplanetaryShocks: 'interplanetaryShocks',
+    highSpeedStreams: 'highSpeedStreams',
+    radiationBelts: 'radiationBelts',
+    magnetopauseCrossings: 'magnetopauseCrossings',
+    notifications: 'spaceWeatherNotices',
+    enlilSimulations: 'enlilSimulations'
+  } as const;
+  return t(labels[stream.id]);
+}
+
+function evidenceLabel(evidence: SolarImpactEvidence, t: ReturnType<typeof useTranslation>['t']): string {
+  if (evidence === 'observed') return t('observedReport');
+  if (evidence === 'reported') return t('reportedNotice');
+  return t('modelOutput');
+}
+
+function evidenceClass(evidence: SolarImpactEvidence, light: boolean): string {
+  if (evidence === 'modelled') return light ? 'text-violet-700' : 'text-violet-200';
+  if (evidence === 'reported') return light ? 'text-amber-700' : 'text-amber-200';
+  return light ? 'text-emerald-700' : 'text-emerald-200';
 }
 
 /** A small observed-data instrument, kept in the overview's free upper-right column. */
@@ -97,7 +127,7 @@ export function SpaceWeatherPanel() {
   return (
     <aside
       aria-label={t('solarWeather')}
-      className={`pointer-events-auto fixed right-[22rem] top-6 z-10 hidden w-64 rounded-2xl border p-5 backdrop-blur-xl lg:block ${surface}`}
+      className={`pointer-events-auto fixed right-[22rem] top-6 z-10 hidden w-72 rounded-2xl border p-5 backdrop-blur-xl lg:block ${surface}`}
     >
       <header className="flex items-start justify-between gap-3">
         <div>
@@ -138,6 +168,31 @@ export function SpaceWeatherPanel() {
         </ul>
       ) : (
         <p className={`mt-4 text-[11px] ${muted}`}>{t('loadingNasaReports')}</p>
+      )}
+
+      {snapshot && (
+        <section className={`mt-4 border-t pt-4 ${light ? 'border-slate-200' : 'border-white/10'}`} aria-label={t('solarImpactLedger')}>
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 className={`text-[10px] uppercase tracking-[0.18em] ${light ? 'text-sky-700' : 'text-sky-200'}`}>{t('solarImpactLedger')}</h3>
+            <span className={`text-[9px] uppercase tracking-[0.12em] ${muted}`}>{t('last14Days')}</span>
+          </div>
+          <ul className="mt-2 space-y-1.5">
+            {snapshot.impactStreams.map((stream) => (
+              <li key={stream.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-0.5">
+                <span className={`min-w-0 truncate text-[10px] ${muted}`} title={stream.sourceError ?? `${stream.endpoint} · NASA DONKI`}>
+                  {impactStreamLabel(stream, t)}
+                </span>
+                <span className={`text-[10px] font-medium tabular-nums ${stream.sourceError ? 'text-red-300' : light ? 'text-slate-700' : 'text-white/85'}`}>
+                  {stream.sourceError ? t('unavailable') : t('reportCount', { count: stream.reportCount })}
+                </span>
+                <span className={`col-span-2 text-[9px] uppercase tracking-[0.12em] ${stream.sourceError ? 'text-red-300/90' : evidenceClass(stream.evidence, light)}`}>
+                  {stream.sourceError ? t('sourceUnavailable') : evidenceLabel(stream.evidence, t)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className={`mt-3 text-[10px] leading-relaxed ${muted}`}>{t('solarImpactScopeNote')}</p>
+        </section>
       )}
 
       {snapshot && <p className={`mt-4 text-[10px] tabular-nums ${muted}`}>{t('updated')} {formatTime(snapshot.fetchedAt, language)}</p>}
