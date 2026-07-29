@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Check, Link2 } from 'lucide-react';
 import { useSimTime } from '../scene/useSimTime';
 import { SATELLITE_GROUPS, useSatelliteGroups } from '../scene/satelliteGroups';
+import { useFlight } from '../flight/useFlight';
+import { useViewSettings } from '../scene/viewSettings';
 import { replaceShareState, shareUrl, type ShareState } from '../lib/urlState';
 import { useTranslation } from './i18n';
 
@@ -17,7 +19,9 @@ function currentState(): ShareState {
     date: time.date,
     multiplier: time.multiplier,
     playing: time.playing,
-    groups: isDefault ? null : enabled
+    groups: isDefault ? null : enabled,
+    body: useFlight.getState().target,
+    mode: useViewSettings.getState().mode
   };
 }
 

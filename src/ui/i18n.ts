@@ -29,8 +29,8 @@ interface LanguageState {
 }
 
 /**
- * Language is deliberately session-scoped. It makes switching instant and
- * leaves shared simulation links about the sky, not a reader preference.
+ * Language stays on this device so a reader does not have to choose it again;
+ * shared simulation links deliberately omit that reader preference.
  */
 export const useLanguage = create<LanguageState>((set) => ({
   language: readPersistedLanguage(),
@@ -153,6 +153,7 @@ const EN = {
   load: 'Load',
   loading: 'Loading…',
   localSky: 'Local sky',
+  localCivilTime: 'Local civil time',
   topocentricHorizon: 'Topocentric ephemeris · horizon',
   observationLocation: 'Observation location',
   useDeviceLocation: 'Use device location',
@@ -370,6 +371,7 @@ const TR: Record<TranslationKey, string> = {
   load: 'Yükle',
   loading: 'Yükleniyor…',
   localSky: 'Yerel gökyüzü',
+  localCivilTime: 'Yerel sivil saat',
   topocentricHorizon: 'Toposentrik efemeris · ufuk',
   observationLocation: 'Gözlem konumu',
   useDeviceLocation: 'Cihaz konumunu kullan',

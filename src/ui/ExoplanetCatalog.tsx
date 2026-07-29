@@ -31,6 +31,10 @@ const COPY = {
     page: 'Page {page} of {pages}',
     host: 'Host star',
     radius: 'Radius',
+    earthComparison: 'Earth reference',
+    radiusComparedToEarth: 'Radius / Earth',
+    orbitComparedToEarth: 'Semi-major axis / Earth orbit',
+    visualScaleNote: 'Visual reference only; bars are capped at {cap}.',
     mass: 'Mass',
     orbit: 'Orbit',
     distance: 'Distance',
@@ -44,6 +48,7 @@ const COPY = {
     days: 'days',
     parsecs: 'pc',
     kelvin: 'K',
+    au: 'AU',
     fetched: 'Fetched {time} UTC',
     archive: 'Open NASA archive documentation'
   },
@@ -74,6 +79,10 @@ const COPY = {
     page: '{pages} sayfadan {page}. sayfa',
     host: 'Ev sahibi yıldız',
     radius: 'Yarıçap',
+    earthComparison: 'Dünya referansı',
+    radiusComparedToEarth: 'Yarıçap / Dünya',
+    orbitComparedToEarth: 'Yarı büyük eksen / Dünya yörüngesi',
+    visualScaleNote: 'Yalnızca görsel referans; çubuklar {cap} değerinde sınırlandırılır.',
     mass: 'Kütle',
     orbit: 'Yörünge',
     distance: 'Uzaklık',
@@ -87,6 +96,7 @@ const COPY = {
     days: 'gün',
     parsecs: 'pc',
     kelvin: 'K',
+    au: 'AU',
     fetched: '{time} UTC alındı',
     archive: 'NASA arşiv belgelerini aç'
   }
@@ -124,6 +134,10 @@ function formatFetchedAt(value: string, language: 'en' | 'tr'): string {
     dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC'
   }).format(date);
   return interpolate(COPY[language].fetched, { time: formatted });
+}
+
+function comparisonWidth(value: number, cap: number): string {
+  return `${Math.max(4, Math.min(100, (value / cap) * 100)).toFixed(1)}%`;
 }
 
 export function ExoplanetCatalog() {
@@ -288,12 +302,34 @@ function ExoplanetCard({ record, language }: { record: ExoplanetRecord; language
     [copy.temperature, formatMeasurement(record.equilibriumTemperatureK, copy.kelvin, language)]
   ];
   const discovery = [record.discoveryMethod, record.discoveryYear, record.facility].filter((value): value is string | number => value !== null).join(' · ') || copy.unknown;
+  const comparisons: { label: string; value: number; cap: number; unit: string }[] = [];
+  if (record.radiusEarth !== null) comparisons.push({ label: copy.radiusComparedToEarth, value: record.radiusEarth, cap: 20, unit: copy.earthRadii });
+  if (record.semiMajorAxisAu !== null) comparisons.push({ label: copy.orbitComparedToEarth, value: record.semiMajorAxisAu, cap: 5, unit: copy.au });
 
   return (
     <li className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 transition-colors hover:border-sky-200/25 hover:bg-sky-200/[0.035]">
       <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-amber-200/75">{copy.discovered}</p>
       <h3 className="mt-2 text-xl font-light tracking-tight text-white">{record.name}</h3>
       <p className="mt-1 text-[11px] leading-5 text-slate-400">{discovery}</p>
+      {comparisons.length > 0 && (
+        <section aria-label={copy.earthComparison} className="mt-4 rounded-xl border border-sky-200/10 bg-sky-200/[0.025] p-3">
+          <h4 className="font-mono text-[8px] uppercase tracking-[0.16em] text-sky-100/60">{copy.earthComparison}</h4>
+          <div className="mt-2.5 space-y-2.5">
+            {comparisons.map((comparison) => (
+              <div key={comparison.label}>
+                <div className="flex items-baseline justify-between gap-3 text-[9px]">
+                  <span className="text-slate-400">{comparison.label}</span>
+                  <span className="font-mono tabular-nums text-sky-100/85">{formatMeasurement(comparison.value, comparison.unit, language)}</span>
+                </div>
+                <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/8" aria-hidden>
+                  <div className="h-full rounded-full bg-gradient-to-r from-sky-300/45 to-amber-200/80" style={{ width: comparisonWidth(comparison.value, comparison.cap) }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[8px] leading-4 text-slate-500">{interpolate(copy.visualScaleNote, { cap: `20 ${copy.earthRadii} / 5 ${copy.au}` })}</p>
+        </section>
+      )}
       <dl className="mt-4 space-y-1.5 border-t border-white/8 pt-3">
         {rows.map(([label, value]) => (
           <div key={label} className="flex items-baseline justify-between gap-3 text-[11px]">

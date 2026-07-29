@@ -47,9 +47,9 @@ function App() {
   const mode = useViewSettings((s) => s.mode);
 
   // A shared link is a specific moment. Restoring it once on load applies the
-  // instant, rate and constellations it carries, so the link opens on the sky
-  // the sharer meant. The ref guard keeps it to a single pass under StrictMode's
-  // double-invoked effects.
+  // instant, rate, selected body, mode and constellations it carries, so the
+  // link opens on the sky the sharer meant. The ref guard keeps it to a single
+  // pass under StrictMode's double-invoked effects.
   const restored = useRef(false);
   useEffect(() => {
     if (restored.current) return;
@@ -63,6 +63,8 @@ function App() {
     if (shared.multiplier !== undefined) time.setMultiplier(shared.multiplier);
     if (shared.playing !== undefined && shared.playing !== time.playing) time.togglePlaying();
     if (shared.groups) useSatelliteGroups.setState({ enabled: shared.groups });
+    if (shared.mode) useViewSettings.getState().setMode(shared.mode);
+    if (shared.body) useFlight.getState().flyTo(shared.body);
 
     setEntered(true);
   }, []);
@@ -78,13 +80,17 @@ function App() {
         date: time.date,
         multiplier: time.multiplier,
         playing: time.playing,
-        groups: nonDefaultGroups(useSatelliteGroups.getState().enabled)
+        groups: nonDefaultGroups(useSatelliteGroups.getState().enabled),
+        body: useFlight.getState().target,
+        mode: useViewSettings.getState().mode
       });
     };
     write();
     const unsubscribe = [
       useSimTime.subscribe((s, p) => (s.playing !== p.playing || s.multiplier !== p.multiplier) && write()),
-      useSatelliteGroups.subscribe((s, p) => s.enabled !== p.enabled && write())
+      useSatelliteGroups.subscribe((s, p) => s.enabled !== p.enabled && write()),
+      useFlight.subscribe((s, p) => s.target !== p.target && write()),
+      useViewSettings.subscribe((s, p) => s.mode !== p.mode && write())
     ];
     return () => unsubscribe.forEach((off) => off());
   }, [entered]);

@@ -16,10 +16,22 @@ function formatAngle(value: number): string {
   return `${sign}${value.toFixed(0)}°`;
 }
 
-function formatTime(date: Date, language: AppLanguage): string {
+function formatUtcTime(date: Date, language: AppLanguage): string {
   return new Intl.DateTimeFormat(language === 'tr' ? 'tr-TR' : 'en-GB', {
     hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short'
   }).format(date);
+}
+
+function formatCivilTime(date: Date, language: AppLanguage, timeZone: string): string {
+  return new Intl.DateTimeFormat(language === 'tr' ? 'tr-TR' : 'en-GB', {
+    dateStyle: 'medium', timeStyle: 'short', timeZone
+  }).format(date);
+}
+
+function deviceTimeZone(): string {
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (!timeZone) throw new Error('Browser did not return an IANA time zone for the selected device location.');
+  return timeZone;
 }
 
 function customLocation(position: GeolocationPosition): ObserverLocation {
@@ -27,7 +39,8 @@ function customLocation(position: GeolocationPosition): ObserverLocation {
     label: 'Device location',
     latitude: position.coords.latitude,
     longitude: position.coords.longitude,
-    elevationM: position.coords.altitude ?? 0
+    elevationM: position.coords.altitude ?? 0,
+    timeZone: deviceTimeZone()
   };
 }
 
@@ -94,7 +107,13 @@ export function ObserverPanel() {
     }
     setLocationError(null);
     navigator.geolocation.getCurrentPosition(
-      (position) => setLocation(customLocation(position)),
+      (position) => {
+        try {
+          setLocation(customLocation(position));
+        } catch (cause) {
+          setLocationError(t('locationUnavailable', { error: cause instanceof Error ? cause.message : String(cause) }));
+        }
+      },
       (error) => setLocationError(t('locationUnavailable', { error: error.message })),
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 10 * 60_000 }
     );
@@ -152,6 +171,14 @@ export function ObserverPanel() {
       </div>
       {locationError && <p className="mt-2 text-[10px] leading-relaxed text-red-300/90">{locationError}</p>}
 
+      <div className={`mt-3 rounded-lg border px-3 py-2 ${light ? 'border-slate-200 bg-slate-50/70' : 'border-white/8 bg-white/[0.025]'}`}>
+        <div className={`text-[9px] uppercase tracking-[0.18em] ${muted}`}>{t('localCivilTime')}</div>
+        <time dateTime={observerTime.toISOString()} className="mt-1 block text-[11px] tabular-nums text-sky-200/90">
+          {formatCivilTime(observerTime, language, location.timeZone)}
+        </time>
+        <p className={`mt-1 font-mono text-[9px] ${muted}`}>{location.timeZone} · {t('universalTime')} {formatUtcTime(observerTime, language)}</p>
+      </div>
+
       <ul className="mt-4 space-y-2.5">
         {visible.length > 0 ? visible.slice(0, 4).map((object) => (
           <li key={object.name} className="flex items-baseline justify-between gap-3">
@@ -172,9 +199,9 @@ export function ObserverPanel() {
         ) : pass ? (
           <p className="mt-1 text-[11px] leading-relaxed">
             {t('issPass', {
-              rise: formatTime(pass.rise, language),
+              rise: formatUtcTime(pass.rise, language),
               altitude: formatAngle(pass.peakAltitude),
-              set: formatTime(pass.set, language)
+              set: formatUtcTime(pass.set, language)
             })}
           </p>
         ) : (
@@ -205,7 +232,7 @@ export function ObserverPanel() {
                 {starlinkRises.map((rise) => (
                   <li key={`${rise.noradId}-${rise.rise.getTime()}`} className="flex items-baseline justify-between gap-2 text-[10px]">
                     <span className="truncate text-white/70">{rise.name}</span>
-                    <span className={`shrink-0 tabular-nums ${light ? 'text-sky-700' : 'text-sky-100/85'}`}>{formatTime(rise.rise, language)} · {formatAngle(rise.altitudeAtSample)}</span>
+                    <span className={`shrink-0 tabular-nums ${light ? 'text-sky-700' : 'text-sky-100/85'}`}>{formatUtcTime(rise.rise, language)} · {formatAngle(rise.altitudeAtSample)}</span>
                   </li>
                 ))}
               </ul>

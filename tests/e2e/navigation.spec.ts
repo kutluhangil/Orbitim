@@ -186,6 +186,8 @@ test('Explore Atlas renders a validated NASA archive catalogue page', async ({ p
   await expect(atlas.getByRole('heading', { name: 'Confirmed exoplanets' })).toBeVisible();
   await expect(atlas.getByText('HD 209458 b', { exact: true })).toBeVisible();
   await expect(atlas.getByText('Not reported', { exact: true })).toBeVisible();
+  await expect(atlas.getByRole('region', { name: 'Earth reference' })).toContainText('Radius / Earth');
+  await expect(atlas.getByRole('region', { name: 'Earth reference' })).toContainText('Semi-major axis / Earth orbit');
   await expect(atlas.getByRole('link', { name: 'Open NASA archive documentation' })).toHaveAttribute(
     'href',
     'https://exoplanetarchive.ipac.caltech.edu/docs/API_resources.html'
@@ -319,6 +321,31 @@ test.describe('desktop Explore Atlas', () => {
     await expect(page.getByRole('dialog', { name: 'Orbitim Explore Atlas' })).toBeHidden();
     await expect(mars).toHaveAttribute('aria-current', 'page');
     await expect(openAtlas).toBeFocused();
+  });
+
+  test('shared links retain body and evidence mode without exposing observer location', async ({ page }) => {
+    await enterDesktopSystem(page);
+
+    const mars = page.getByRole('button', { name: 'Visit Mars' });
+    await mars.click();
+    await page.getByRole('radio', { name: 'Scientific' }).click();
+    await expect.poll(() => new URL(page.url()).hash).toContain('b=mars');
+    await expect.poll(() => new URL(page.url()).hash).toContain('m=scientific');
+    expect(new URL(page.url()).hash).not.toContain('lat=');
+    expect(new URL(page.url()).hash).not.toContain('lon=');
+
+    await page.goto('/#t=2026-07-29T12%3A00%3A00Z&p=0&b=mars&m=scientific');
+    await expect(page.getByRole('button', { name: 'Visit Mars' })).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('radio', { name: 'Scientific' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  test('observer panel labels civil time separately from UTC predictions', async ({ page }) => {
+    await enterDesktopSystem(page);
+
+    const observer = page.getByRole('complementary', { name: 'Local sky' });
+    await expect(observer.getByText('Local civil time', { exact: true })).toBeVisible();
+    await expect(observer.getByText('Europe/Istanbul', { exact: false })).toBeVisible();
+    await expect(observer.getByText('Universal time', { exact: false })).toBeVisible();
   });
 });
 
