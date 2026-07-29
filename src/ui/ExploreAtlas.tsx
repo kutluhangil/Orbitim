@@ -6,6 +6,7 @@ import {
   type AtlasChapter,
   type AtlasEvidence
 } from '../data/exploreAtlas';
+import { DeepSkyGallery } from './DeepSkyGallery';
 import { ExoplanetCatalog } from './ExoplanetCatalog';
 import { useLanguage } from './i18n';
 
@@ -108,6 +109,8 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
   const [selectedId, setSelectedId] = useState(ATLAS_ENTRIES[0].id);
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
+  const galleryRef = useRef<HTMLDivElement>(null);
+  const pendingMobileGalleryReveal = useRef(false);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -147,11 +150,33 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
   );
   const selected = ATLAS_ENTRIES.find((entry) => entry.id === selectedId) ?? ATLAS_ENTRIES[0];
   const selectedText = atlasText(selected, language);
+  const selectedHasGallery = selected.id === 'galaxy-kinds' || selected.id === 'nearby-galaxies';
+
+  useEffect(() => {
+    if (!pendingMobileGalleryReveal.current || !selectedHasGallery) return;
+    pendingMobileGalleryReveal.current = false;
+    if (!window.matchMedia('(max-width: 1023px)').matches) return;
+    const frame = window.requestAnimationFrame(() => {
+      galleryRef.current?.scrollIntoView({
+        block: 'start',
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedHasGallery, selectedId]);
 
   const selectChapter = (nextChapter: AtlasChapter | 'all') => {
     setChapter(nextChapter);
     const nextSelected = ATLAS_ENTRIES.find((entry) => nextChapter === 'all' || entry.chapter === nextChapter);
     if (nextSelected) setSelectedId(nextSelected.id);
+  };
+
+  const selectEntry = (entry: (typeof ATLAS_ENTRIES)[number]) => {
+    if (entry.chapter === 'galaxies') {
+      pendingMobileGalleryReveal.current = true;
+      setChapter('galaxies');
+    }
+    setSelectedId(entry.id);
   };
 
   return (
@@ -232,7 +257,7 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
                     <button
                       key={entry.id}
                       type="button"
-                      onClick={() => setSelectedId(entry.id)}
+                      onClick={() => selectEntry(entry)}
                       aria-pressed={active}
                       aria-label={interpolate(copy.select, text.title)}
                       className={`group min-h-48 rounded-[1.4rem] border p-5 text-left transition-[border-color,background-color,transform] duration-200 hover:-translate-y-0.5 focus-visible:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/70 ${
@@ -257,6 +282,7 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
               </div>
 
               {selected.id === 'confirmed-exoplanets' && <ExoplanetCatalog />}
+              {selectedHasGallery && <div ref={galleryRef}><DeepSkyGallery /></div>}
             </div>
 
             <aside className="h-fit rounded-[1.5rem] border border-white/12 bg-[#07101e]/85 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl lg:sticky lg:top-6">

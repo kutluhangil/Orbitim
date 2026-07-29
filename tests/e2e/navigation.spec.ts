@@ -129,6 +129,24 @@ test('Explore Atlas renders a validated NASA archive catalogue page', async ({ p
   await expect(alert).toContainText('invalid fetchedAt timestamp');
 });
 
+test('Explore Atlas keeps credited NASA galaxy observations distinct from the simulation', async ({ page }) => {
+  test.setTimeout(60_000);
+  await enterSystem(page);
+  await page.getByRole('button', { name: 'Open scene controls' }).click();
+  await page.getByRole('button', { name: 'Open Explore Atlas' }).click();
+
+  const atlas = page.getByRole('dialog', { name: 'Orbitim Explore Atlas' });
+  await atlas.getByRole('button', { name: 'Galaxies', exact: true }).click();
+  await expect(atlas.getByRole('heading', { name: 'A nearby-universe field guide' })).toBeVisible();
+  await expect(atlas.getByRole('article', { name: 'Selected target' })).toContainText('Andromeda · M31');
+
+  await atlas.getByRole('button', { name: /NGC 1300/ }).click();
+  const selected = atlas.getByRole('article', { name: 'Selected target' });
+  await expect(selected).toContainText('Barred spiral galaxy');
+  await expect(selected).toContainText('Distance not displayed here');
+  await expect(selected.getByRole('link', { name: 'Read NGC 1300' })).toHaveAttribute('href', 'https://science.nasa.gov/image-detail/ngc-1300/');
+});
+
 test.describe('desktop Explore Atlas', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 

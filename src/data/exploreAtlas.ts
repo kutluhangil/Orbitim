@@ -76,10 +76,10 @@ export const ATLAS_ENTRIES: readonly AtlasEntry[] = [
     tr: { title: 'Galaksi türleri', eyebrow: 'Biçimler tarih taşır', summary: 'Sarmal, eliptik, merceksi, düzensiz ve aktif türler süsleme değil, gözlemdir.', detail: 'Derin uzay bölümü, ziyaretçinin bir galaksi görüntüsünün ne söyleyip ne söyleyemeyeceğini okumasına yardım eden sınıflandırmalarla başlar.', facts: ['Gözlemlenmiş morfoloji', 'Sınıflandırma tam bir köken hikâyesi değildir', 'Görüntüler görev ve kredi bilgisini korur'] }
   },
   {
-    id: 'nearby-galaxies', chapter: 'galaxies', evidence: 'planned', distance: 'Local Universe',
+    id: 'nearby-galaxies', chapter: 'galaxies', evidence: 'observed', distance: 'Local Universe',
     source: { label: 'NASA Galaxies Gallery', url: 'https://science.nasa.gov/gallery/universe-galaxies/' },
-    en: { title: 'The nearby universe', eyebrow: 'Next: curated deep sky', summary: 'Begin with a small, credited gallery before claiming to map everything.', detail: 'The first galaxy release should use named objects with a NASA image, distance context and source metadata—not an unbounded wall of thumbnails.', facts: ['Curated named objects', 'Image credits carried into detail view', 'Distance and redshift context follow later'] },
-    tr: { title: 'Yakın evren', eyebrow: 'Sıradaki: kürasyonlu derin uzay', summary: 'Her şeyi haritaladığını iddia etmeden önce küçük ve kredili bir galeriyle başlayın.', detail: 'İlk galaksi sürümü, sınırsız küçük görsel duvarı yerine NASA görseli, uzaklık bağlamı ve kaynak metadatası olan adlandırılmış nesneler kullanmalı.', facts: ['Kürasyonlu adlandırılmış nesneler', 'Görsel kredileri detay görünümüne taşınır', 'Uzaklık ve kırmızıya kayma bağlamı sonraki fazda gelir'] }
+    en: { title: 'The nearby universe', eyebrow: 'Curated deep sky', summary: 'Read a small, credited gallery before pretending to map everything.', detail: 'This first galaxy release uses named objects with a NASA image, distance context and both science and image-record links—not an unbounded wall of thumbnails.', facts: ['Curated named objects', 'Every thumbnail names its image credit', 'Distance and redshift lookup follow later'] },
+    tr: { title: 'Yakın evren', eyebrow: 'Kürasyonlu derin uzay', summary: 'Her şeyi haritaladığını iddia etmeden önce küçük ve kredili bir galeriyi okuyun.', detail: 'Bu ilk galaksi sürümü, sınırsız küçük görsel duvarı yerine NASA görseli, uzaklık bağlamı ile bilim ve görsel-kayıt bağlantıları olan adlandırılmış nesneler kullanır.', facts: ['Kürasyonlu adlandırılmış nesneler', 'Her küçük görsel, görüntü kredisini belirtir', 'Uzaklık ve kırmızıya kayma araması sonraki fazda gelir'] }
   },
   {
     id: 'deep-sky-search', chapter: 'galaxies', evidence: 'planned', distance: 'Object search',
