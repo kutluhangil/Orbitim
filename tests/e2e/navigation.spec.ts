@@ -64,6 +64,71 @@ test('Explore Atlas keeps source and uncertainty labels visible in Turkish', asy
   await expect(turkishAtlas.getByText('Değişken', { exact: true })).toBeVisible();
 });
 
+test('Explore Atlas renders a validated NASA archive catalogue page', async ({ page }) => {
+  test.setTimeout(60_000);
+  const requestedUrls: string[] = [];
+  await page.route('**/api/exoplanets?*', async (route) => {
+    const requestUrl = new URL(route.request().url());
+    requestedUrls.push(requestUrl.toString());
+    const requestedPage = Number(requestUrl.searchParams.get('page') ?? '0');
+    const requestedMethod = requestUrl.searchParams.get('method');
+    const requestedQuery = requestUrl.searchParams.get('q') ?? '';
+    const fetchedAt = requestedQuery === 'INVALID' ? '2026-02-30T12:00:00.000Z' : '2026-07-29T12:00:00.000Z';
+    const name = requestedPage === 1
+      ? 'Kepler-452 b'
+      : (requestedMethod === 'transit' || requestedQuery.includes('TRAPPIST')) ? 'TRAPPIST-1 b' : 'HD 209458 b';
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        records: [
+          {
+            name, hostName: name === 'HD 209458 b' ? 'HD 209458' : 'TRAPPIST-1', discoveryMethod: 'Transit', discoveryYear: 2016,
+            radiusEarth: 1.116, massEarth: 1.374, orbitDays: 1.5109, equilibriumTemperatureK: null,
+            distanceParsecs: 12.43, starTemperatureK: 2566, rightAscensionDeg: 346.62, declinationDeg: -5.04,
+            facility: 'Transiting Planets and Planetesimals Small Telescope', semiMajorAxisAu: 0.01154, eccentricity: null
+          }
+        ],
+        total: 96, page: requestedPage, limit: 48,
+        source: 'NASA Exoplanet Archive · PSCompPars',
+        sourceUrl: 'https://exoplanetarchive.ipac.caltech.edu/docs/API_resources.html',
+        fetchedAt
+      })
+    });
+  });
+
+  await enterSystem(page);
+  await page.getByRole('button', { name: 'Open scene controls' }).click();
+  await page.getByRole('button', { name: 'Open Explore Atlas' }).click();
+
+  const atlas = page.getByRole('dialog', { name: 'Orbitim Explore Atlas' });
+  await atlas.getByRole('button', { name: 'Other worlds' }).click();
+  await expect(atlas.getByRole('heading', { name: 'Confirmed exoplanets' })).toBeVisible();
+  await expect(atlas.getByText('HD 209458 b', { exact: true })).toBeVisible();
+  await expect(atlas.getByText('Not reported', { exact: true })).toBeVisible();
+  await expect(atlas.getByRole('link', { name: 'Open NASA archive documentation' })).toHaveAttribute(
+    'href',
+    'https://exoplanetarchive.ipac.caltech.edu/docs/API_resources.html'
+  );
+
+  await atlas.getByRole('searchbox', { name: 'Search planet or host star' }).fill('TRAPPIST-1');
+  await expect(atlas.getByText('TRAPPIST-1 b', { exact: true })).toBeVisible();
+  await expect.poll(() => requestedUrls.some((value) => new URL(value).searchParams.get('q') === 'TRAPPIST-1')).toBeTruthy();
+
+  await atlas.getByRole('button', { name: 'Transit', exact: true }).click();
+  await expect.poll(() => requestedUrls.some((value) => new URL(value).searchParams.get('method') === 'transit')).toBeTruthy();
+
+  await atlas.getByRole('searchbox', { name: 'Search planet or host star' }).fill('');
+  const nextPage = atlas.getByRole('button', { name: 'Next page' });
+  await expect(nextPage).toBeEnabled();
+  await nextPage.click();
+  await expect(atlas.getByText('Kepler-452 b', { exact: true })).toBeVisible();
+  await expect.poll(() => requestedUrls.some((value) => new URL(value).searchParams.get('page') === '1')).toBeTruthy();
+
+  await atlas.getByRole('searchbox', { name: 'Search planet or host star' }).fill('INVALID');
+  const alert = atlas.getByRole('alert');
+  await expect(alert).toContainText('invalid fetchedAt timestamp');
+});
+
 test.describe('desktop Explore Atlas', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 

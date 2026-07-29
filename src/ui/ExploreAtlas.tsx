@@ -6,6 +6,7 @@ import {
   type AtlasChapter,
   type AtlasEvidence
 } from '../data/exploreAtlas';
+import { ExoplanetCatalog } from './ExoplanetCatalog';
 import { useLanguage } from './i18n';
 
 interface ExploreAtlasProps {
@@ -254,6 +255,8 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
                   );
                 })}
               </div>
+
+              {selected.id === 'confirmed-exoplanets' && <ExoplanetCatalog />}
             </div>
 
             <aside className="h-fit rounded-[1.5rem] border border-white/12 bg-[#07101e]/85 p-5 shadow-2xl shadow-black/30 backdrop-blur-xl lg:sticky lg:top-6">
