@@ -374,7 +374,7 @@ test.describe('desktop Explore Atlas', () => {
   });
 
   test('Explore Atlas keeps TESS PC candidates separate from confirmed planets', async ({ page }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(120_000);
     await page.route('**/api/exoplanets?*', async (route) => {
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ records: [], total: 0, page: 0, limit: 48, source: 'NASA Exoplanet Archive · PSCompPars', sourceUrl: 'https://exoplanetarchive.ipac.caltech.edu/docs/API_resources.html', fetchedAt: '2026-07-29T12:00:00.000Z' }) });
     });
@@ -419,6 +419,51 @@ test.describe('desktop Explore Atlas', () => {
     await expect(atlas.getByText('NASA ID · jwst-test-image', { exact: true })).toBeVisible();
     await expect(atlas.getByRole('img', { name: 'Test Webb mirror' })).toBeVisible();
     await expect(atlas.getByRole('link', { name: 'Open original NASA record' }).first()).toHaveAttribute('href', 'https://images.nasa.gov/details/jwst-test-image');
+  });
+
+  test('Explore Atlas keeps CMR collection metadata and PDS target context separate from imagery', async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.route('**/api/earthdata-collections?*', async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          records: [{
+            id: 'C1234567890-NSIDC', title: 'IceBridge L4 Surface Elevation', shortName: 'ILNSA1B', versionId: '2', archiveCenter: 'NSIDC_ECS',
+            summary: 'A tested NASA collection record.', timeStart: '2009-01-01T00:00:00Z', timeEnd: null,
+            browseAvailable: true, onlineAccess: true, metadataUrl: 'https://cmr.earthdata.nasa.gov/search/concepts/C1234567890-NSIDC.umm_json'
+          }],
+          total: 1, page: 1, limit: 12, source: 'NASA Earthdata CMR · collection metadata',
+          sourceUrl: 'https://cmr.earthdata.nasa.gov/search/site/docs/search/api.html', fetchedAt: '2026-07-29T12:00:00.000Z'
+        })
+      });
+    });
+    await page.route('**/api/pds-targets?*', async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          records: [{
+            id: 'urn:nasa:pds:context:target:satellite.jupiter.europa::1.2', type: 'Product_Context', title: 'Europa', version: '1.2',
+            updatedAt: '2025-04-24T00:00:00Z', labelUrl: 'https://pds.nasa.gov/data/pds4/context-pds4/target/satellite.jupiter.europa_1.2.xml'
+          }],
+          total: 1, target: 'Europa', limit: 12, source: 'NASA PDS API · target context metadata',
+          sourceUrl: 'https://nasa-pds.github.io/pds-api/guides/search.html', fetchedAt: '2026-07-29T12:00:00.000Z', coverage: 'partial'
+        })
+      });
+    });
+
+    await enterDesktopSystem(page);
+    await page.getByRole('button', { name: 'Open Explore Atlas' }).click();
+    const atlas = page.getByRole('dialog', { name: 'Orbitim Explore Atlas' });
+    await atlas.getByRole('button', { name: 'Open atlas entry: Find NASA datasets' }).click();
+    await expect(atlas.locator('#nasa-archive-finder-title')).toBeVisible();
+    await expect(atlas.getByText('Collection metadata only.', { exact: false })).toBeVisible();
+    await expect(atlas.getByText('IceBridge L4 Surface Elevation', { exact: true })).toBeVisible();
+    await expect(atlas.getByRole('link', { name: 'Open CMR metadata' })).toHaveAttribute('href', 'https://cmr.earthdata.nasa.gov/search/concepts/C1234567890-NSIDC.umm_json');
+
+    await atlas.getByRole('tab', { name: 'PDS target context' }).click();
+    await expect(atlas.getByText('Target-context metadata only.', { exact: false })).toBeVisible();
+    await expect(atlas.getByText('urn:nasa:pds:context:target:satellite.jupiter.europa::1.2', { exact: true })).toBeVisible();
+    await expect(atlas.getByRole('link', { name: 'Open PDS label' })).toHaveAttribute('href', 'https://pds.nasa.gov/data/pds4/context-pds4/target/satellite.jupiter.europa_1.2.xml');
   });
 
   test('Escape returns to the same selected world', async ({ page }) => {

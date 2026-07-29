@@ -10,6 +10,7 @@ import { useLanguage } from './i18n';
 
 const ExoplanetCatalog = lazy(() => import('./ExoplanetCatalog').then(({ ExoplanetCatalog: Component }) => ({ default: Component })));
 const NasaMediaLibrary = lazy(() => import('./NasaMediaLibrary').then(({ NasaMediaLibrary: Component }) => ({ default: Component })));
+const NasaArchiveFinder = lazy(() => import('./NasaArchiveFinder').then(({ NasaArchiveFinder: Component }) => ({ default: Component })));
 const DeepSkyGallery = lazy(() => import('./DeepSkyGallery').then(({ DeepSkyGallery: Component }) => ({ default: Component })));
 const DeepSkyLookup = lazy(() => import('./DeepSkyLookup').then(({ DeepSkyLookup: Component }) => ({ default: Component })));
 const SmallBodyExplorer = lazy(() => import('./SmallBodyExplorer').then(({ SmallBodyExplorer: Component }) => ({ default: Component })));
@@ -39,6 +40,7 @@ const CHAPTER_COPY = {
     observed: 'Observed source',
     derived: 'Calculated / interpreted',
     planned: 'Live archive next',
+    catalogued: 'Archive metadata',
     current: 'Atlas · live and credited sources',
     unknown: 'Unknown remains unknown.',
     routeLabels: ['Local geometry', 'Neighbouring stars', 'Deep sky']
@@ -61,6 +63,7 @@ const CHAPTER_COPY = {
     observed: 'Gözlemlenmiş kaynak',
     derived: 'Hesaplanmış / yorumlanmış',
     planned: 'Canlı arşiv sırada',
+    catalogued: 'Arşiv metadatası',
     current: 'Atlas · canlı ve kredili kaynaklar',
     unknown: 'Bilinmeyen, bilinmeyen kalır.',
     routeLabels: ['Yerel geometri', 'Komşu yıldızlar', 'Derin uzay']
@@ -70,7 +73,8 @@ const CHAPTER_COPY = {
 const EVIDENCE_STYLE: Record<AtlasEvidence, { dot: string; chip: string }> = {
   observed: { dot: 'bg-emerald-300', chip: 'border-emerald-300/25 bg-emerald-300/10 text-emerald-100' },
   derived: { dot: 'bg-sky-300', chip: 'border-sky-300/25 bg-sky-300/10 text-sky-100' },
-  planned: { dot: 'bg-amber-300', chip: 'border-amber-300/25 bg-amber-300/10 text-amber-100' }
+  planned: { dot: 'bg-amber-300', chip: 'border-amber-300/25 bg-amber-300/10 text-amber-100' },
+  catalogued: { dot: 'bg-teal-300', chip: 'border-teal-300/25 bg-teal-300/10 text-teal-100' }
 };
 
 const TURKISH_DISTANCES: Record<string, string> = {
@@ -83,6 +87,7 @@ const TURKISH_DISTANCES: Record<string, string> = {
   'Local Universe': 'Yerel Evren',
   'Object search': 'Nesne araması',
   'Across missions': 'Görevler arasında',
+  'Catalogue lookup': 'Katalog araması',
   'Every scale': 'Her ölçekte'
 };
 
@@ -291,10 +296,11 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
                 })}
               </div>
 
-              {(selected.id === 'confirmed-exoplanets' || selected.id === 'mission-eyes' || selectedHasGallery || selected.id === 'deep-sky-search' || selected.id === 'small-body-search') && (
+              {(selected.id === 'confirmed-exoplanets' || selected.id === 'mission-eyes' || selected.id === 'archive-finder' || selectedHasGallery || selected.id === 'deep-sky-search' || selected.id === 'small-body-search') && (
                 <Suspense fallback={<AtlasModuleLoading language={language} />}>
                   {selected.id === 'confirmed-exoplanets' && <ExoplanetCatalog />}
                   {selected.id === 'mission-eyes' && <NasaMediaLibrary />}
+                  {selected.id === 'archive-finder' && <NasaArchiveFinder />}
                   {selectedHasGallery && <div ref={attachGalleryRef}><DeepSkyGallery /></div>}
                   {selected.id === 'deep-sky-search' && <DeepSkyLookup />}
                   {selected.id === 'small-body-search' && <SmallBodyExplorer />}

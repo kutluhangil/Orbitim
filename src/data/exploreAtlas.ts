@@ -1,7 +1,7 @@
 import type { AppLanguage } from '../ui/i18n';
 
 export type AtlasChapter = 'system' | 'worlds' | 'galaxies' | 'evidence';
-export type AtlasEvidence = 'observed' | 'derived' | 'planned';
+export type AtlasEvidence = 'observed' | 'derived' | 'planned' | 'catalogued';
 
 interface AtlasText {
   title: string;
@@ -98,6 +98,12 @@ export const ATLAS_ENTRIES: readonly AtlasEntry[] = [
     source: { label: 'NASA Image and Video Library', url: 'https://images.nasa.gov/' },
     en: { title: 'How we saw it', eyebrow: 'Missions and instruments', summary: 'A beautiful image is stronger when you can name the instrument behind it.', detail: 'Every future gallery entry should identify its mission, observing band, capture or publication date, credit and original NASA page.', facts: ['Mission and instrument', 'Observed band and timestamp', 'Direct original source'] },
     tr: { title: 'Onu nasıl gördük', eyebrow: 'Görevler ve araçlar', summary: 'Güzel bir görüntü, arkasındaki aracı adlandırabildiğinizde daha güçlü olur.', detail: 'Gelecekteki her galeri kaydı görevini, gözlem bandını, çekim veya yayın tarihini, kredisini ve orijinal NASA sayfasını belirtmeli.', facts: ['Görev ve araç', 'Gözlem bandı ve zaman damgası', 'Doğrudan orijinal kaynak'] }
+  },
+  {
+    id: 'archive-finder', chapter: 'evidence', evidence: 'catalogued', distance: 'Catalogue lookup',
+    source: { label: 'NASA Earthdata CMR + PDS API', url: 'https://cmr.earthdata.nasa.gov/search/site/docs/search/api.html' },
+    en: { title: 'Find NASA datasets', eyebrow: 'Archive metadata, not imagery', summary: 'Search NASA Earthdata collections and Planetary Data System target contexts as bounded source records.', detail: 'These searches return archive metadata rather than silently downloading science files. Earthdata keywords are not celestial target resolution; PDS searchable coverage is explicitly partial.', facts: ['Primary archive metadata only', 'Every result opens its original record', 'Access rules and coverage limits stay visible'] },
+    tr: { title: 'NASA veri kümelerini bulun', eyebrow: 'Görüntü değil, arşiv metadatası', summary: 'NASA Earthdata koleksiyonlarını ve Planetary Data System hedef bağlamlarını sınırlandırılmış kaynak kayıtları olarak arayın.', detail: 'Bu aramalar bilim dosyalarını sessizce indirmek yerine arşiv metadatasını döndürür. Earthdata anahtar kelimeleri göksel hedef çözümü değildir; PDS’in aranabilir kapsamı açıkça kısmi olarak belirtilir.', facts: ['Yalnızca birincil arşiv metadatası', 'Her sonuç orijinal kaydına açılır', 'Erişim kuralları ve kapsam sınırları görünür kalır'] }
   },
   {
     id: 'evidence-first', chapter: 'evidence', evidence: 'derived', distance: 'Every scale',
