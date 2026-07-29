@@ -223,6 +223,7 @@ const EN = {
   ,satelliteSourceNote: 'Position and velocity propagated with SGP4 from the CelesTrak element set above. Accuracy degrades with the age of that set.'
   ,days: 'days'
   ,spacecraftIllustration: 'Representative illustration of a {group} class spacecraft'
+  ,inspectSpacecraft: 'Inspect 3D model of {craft}'
 } as const;
 
 type TranslationKey = keyof typeof EN;
@@ -433,6 +434,7 @@ const TR: Record<TranslationKey, string> = {
   ,satelliteSourceNote: 'Konum ve hız, yukarıdaki CelesTrak eleman kümesinden SGP4 ile yayılır. Doğruluk, kümenin yaşıyla azalır.'
   ,days: 'gün'
   ,spacecraftIllustration: '{group} sınıfı uzay aracını temsil eden illüstrasyon'
+  ,inspectSpacecraft: '{craft} 3B modelini incele'
 };
 
 const TRANSLATIONS: Record<AppLanguage, Record<TranslationKey, string>> = { en: EN, tr: TR };

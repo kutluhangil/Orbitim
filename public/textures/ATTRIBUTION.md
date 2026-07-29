@@ -91,3 +91,20 @@ Original NASA resource pages: [Mimas](https://science.nasa.gov/resource/mimas-3d
 Tethys and Dione begin from Saturn-centred J2000 state vectors exported from
 [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) (sat441l); their scene
 phase is propagated from that measurement, never from a hand-picked longitude.
+
+## Deep-space spacecraft models
+
+`../models/parker-solar-probe.glb` is NASA Visualization Technology Applications
+and Development (VTAD)'s published [Parker Solar Probe glTF
+model](https://science.nasa.gov/resource/parker-solar-probe-3d-model/). The
+scene centres and normalises the source mesh from its measured bounds; its
+position comes independently from the spacecraft ephemeris.
+
+James Webb Space Telescope is rendered as a lightweight scene-native visual
+model of the deployed observatory, rather than as a substituted third-party
+asset. Its eighteen hexagonal primary-mirror segments, five-layer sunshield,
+spacecraft bus, solar array and secondary-mirror support follow NASA's
+[Webb 3D reference](https://science.nasa.gov/mission/webb/webb-3d/) and
+[published model parts](https://science.nasa.gov/mission/webb/build-a-model-of-webb/).
+It is not represented as an engineering model; as with Parker, its geometry is
+display-scaled while its location remains the live ephemeris location.

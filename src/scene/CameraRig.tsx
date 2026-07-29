@@ -9,6 +9,7 @@ import { getBodyRecord } from '../lib/ephemeris/bodies';
 import { sceneRadiusOf, type PositionRegistry } from './bodyPositions';
 import { satelliteFocus, useSatelliteSelection } from './satelliteSelection';
 import { KM_TO_SCENE } from './satelliteFrame';
+import { readSpacecraftPosition, useSpacecraftSelection } from './spacecraftSelection';
 
 /** Seconds a flight leg takes, regardless of distance travelled. */
 const FLIGHT_SECONDS = 2.5;
@@ -32,6 +33,10 @@ const SATELLITE_MIN_DISTANCE = 40 * KM_TO_SCENE;
 const SATELLITE_STANDOFF = 1600 * KM_TO_SCENE;
 const CHASE_BEHIND = 0.8;
 const CHASE_ABOVE = 0.6;
+/** Framing distance for the intentionally display-scaled deep-space vehicles. */
+const SPACECRAFT_STANDOFF = 5.8;
+/** Prevents a wheel zoom from crossing the display model's silhouette. */
+const SPACECRAFT_MIN_DISTANCE = 1.8;
 /** Camera position and look-at point of the whole-system view. */
 const OVERVIEW_POSITION = new THREE.Vector3(0, 340, 720);
 /** Vertical field of view the scene was framed at, and the aspect it assumes. */
@@ -125,14 +130,23 @@ export function CameraRig({ registry }: CameraRigProps) {
     // A followed satellite outranks the body it orbits: the camera rides the
     // object, and the planet becomes what it is seen against.
     const riding = useSatelliteSelection.getState().following && satelliteFocus.tracked;
+    const selectedCraftId = useSpacecraftSelection.getState().selectedId;
+    // A body visit always wins over a chosen deep-space craft. This lets the
+    // normal rail immediately take the visitor back to a planet without a
+    // second, hidden state transition.
+    const selectedCraftPosition = target || !selectedCraftId ? null : readSpacecraftPosition(selectedCraftId);
+    const inspectingCraft = selectedCraftPosition !== null;
     const anchor = target ? registry.get(target)! : origin;
 
     const destinationLook = focus.current;
     if (riding) destinationLook.copy(satelliteFocus.position);
+    else if (selectedCraftPosition) destinationLook.copy(selectedCraftPosition);
     else destinationLook.copy(anchor);
 
     const destinationDistance = riding
       ? SATELLITE_STANDOFF
+      : inspectingCraft
+        ? SPACECRAFT_STANDOFF
       : target
         ? sceneRadiusOf(target) *
           Math.max(
@@ -170,6 +184,15 @@ export function CameraRig({ registry }: CameraRigProps) {
           .normalize()
           .multiplyScalar(destinationDistance)
           .add(destinationLook);
+      } else if (inspectingCraft) {
+        // The pose is a neutral three-quarter inspection view. It deliberately
+        // does not infer a vehicle attitude from the orbit; that would imply
+        // telemetry we do not have.
+        destinationEye = scratchEye
+          .set(-0.72, 0.48, 0.62)
+          .normalize()
+          .multiplyScalar(destinationDistance)
+          .add(destinationLook);
       } else if (target) {
         // Arrive on the sunlit side: the approach vector points from the body
         // back towards the Sun, lifted slightly so the terminator stays in frame.
@@ -194,7 +217,7 @@ export function CameraRig({ registry }: CameraRigProps) {
       orbitControls.target.copy(scratchLook);
 
       if (t >= 1) arrive();
-    } else if (phase === 'orbiting' && target) {
+    } else if ((phase === 'orbiting' && target) || inspectingCraft) {
       // Follow the focus without fighting the user's orbit input: translate the
       // camera by exactly the motion of whatever it is framing this frame.
       const shift = scratchShift.copy(destinationLook).sub(lastFocus.current);
@@ -202,7 +225,7 @@ export function CameraRig({ registry }: CameraRigProps) {
       orbitControls.target.copy(destinationLook);
     }
 
-    if (target) lastFocus.current.copy(destinationLook);
+    if (target || inspectingCraft) lastFocus.current.copy(destinationLook);
 
     // The zoom floor belongs to whatever is being framed, not to the scene: a
     // single global minimum is either too far out to approach Phobos or close
@@ -210,6 +233,8 @@ export function CameraRig({ registry }: CameraRigProps) {
     // the thing in frame changes as the visitor moves between them.
     orbitControls.minDistance = riding
       ? SATELLITE_MIN_DISTANCE
+      : inspectingCraft
+        ? SPACECRAFT_MIN_DISTANCE
       : sceneRadiusOf(target ?? 'sun') * MIN_APPROACH_RADII;
     // Clamping only the input leaves a camera that was already inside the floor
     // — arriving from a flight, or switching focus — stuck there, so push it

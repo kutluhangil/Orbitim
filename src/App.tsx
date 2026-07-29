@@ -16,6 +16,7 @@ import { useFlight } from './flight/useFlight';
 import { SatellitePanel } from './ui/SatellitePanel';
 import { SatelliteInfo } from './ui/SatelliteInfo';
 import { useSatelliteSelection } from './scene/satelliteSelection';
+import { useSpacecraftSelection } from './scene/spacecraftSelection';
 import { useSimTime } from './scene/useSimTime';
 import { useViewSettings } from './scene/viewSettings';
 import { SATELLITE_GROUPS, useSatelliteGroups } from './scene/satelliteGroups';
@@ -92,6 +93,11 @@ function App() {
         const wasFollowing = selection.following;
         selection.clear();
         if (wasFollowing) useFlight.getState().refocus();
+        return;
+      }
+      if (useSpacecraftSelection.getState().selectedId) {
+        useSpacecraftSelection.getState().clear();
+        returnToOverview();
         return;
       }
       returnToOverview();

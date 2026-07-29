@@ -32,3 +32,24 @@ test('Earth exposes the Moon through its child dock', async ({ page }) => {
   await expect(moonDock).toBeVisible();
   await expect(moonDock.getByRole('button', { name: 'Visit Moon' })).toBeVisible();
 });
+
+test('NASA Parker 3D model is served to the live WebGL scene', async ({ page }) => {
+  const response = await page.request.get('/models/parker-solar-probe.glb');
+  expect(response.ok()).toBeTruthy();
+  expect(Number(response.headers()['content-length'] ?? '0')).toBeGreaterThan(6_000_000);
+
+  await page.goto('/');
+  await expect(page.locator('canvas')).toBeVisible();
+});
+
+test('Parker label opens and leaves a 3D inspection flight', async ({ page }) => {
+  await enterSystem(page);
+
+  const inspectParker = page.getByRole('button', { name: 'Inspect 3D model of Parker Solar Probe' });
+  await expect(inspectParker).toBeVisible();
+  await inspectParker.click();
+  await expect(inspectParker).toBeHidden();
+
+  await page.keyboard.press('Escape');
+  await expect(inspectParker).toBeVisible();
+});

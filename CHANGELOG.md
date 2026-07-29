@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added direct, accessible fly-to inspection for the official NASA VTAD Parker Solar Probe glTF render and a lightweight, source-documented 3D James Webb observatory model at their live ephemeris positions; both retain display-only size exaggeration in the AU-scale scene.
 - Made client calls to Vercel data routes diagnose non-JSON local/proxy responses explicitly, including the required Vercel development context instead of surfacing a raw JSON parser error.
 - Added a Playwright mobile regression suite for the consolidated scene cockpit, TR language change and Earth-to-Moon child dock, and updated project documentation to reflect the current body count and Vercel data routes.
 - Localized the live science, observer, event and satellite panels including Turkish date/number formatting, and made JPL route failures return explicit invalid-JSON or transport diagnostics.

@@ -3,6 +3,7 @@ import { Orbit } from 'lucide-react';
 import { ALL_BODIES, getBodyRecord, getMoonsOf, type BodyId } from '../lib/ephemeris/bodies';
 import { useFlight } from '../flight/useFlight';
 import { useViewSettings } from '../scene/viewSettings';
+import { useSpacecraftSelection } from '../scene/spacecraftSelection';
 import { BodyDisc } from './BodyDisc';
 import { localizedBodyName, useTranslation } from './i18n';
 
@@ -20,6 +21,7 @@ export function BodyRail() {
   const target = useFlight((s) => s.target);
   const flyTo = useFlight((s) => s.flyTo);
   const returnToOverview = useFlight((s) => s.returnToOverview);
+  const clearSpacecraft = useSpacecraftSelection((s) => s.clear);
   const light = useViewSettings((s) => s.theme === 'light');
   const { language, t } = useTranslation();
   const [moonDockFor, setMoonDockFor] = useState<BodyId | null>(null);
@@ -60,7 +62,10 @@ export function BodyRail() {
         <li className="snap-start">
           <button
             type="button"
-            onClick={returnToOverview}
+            onClick={() => {
+              clearSpacecraft();
+              returnToOverview();
+            }}
             aria-label={t('visitSystem')}
             aria-current={target === null ? 'page' : undefined}
             className={`group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full ring-1 ring-transparent transition-[background-color,color,transform] duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 ${
@@ -91,7 +96,10 @@ export function BodyRail() {
             >
               <button
                 type="button"
-                onClick={() => flyTo(id)}
+                onClick={() => {
+                  clearSpacecraft();
+                  flyTo(id);
+                }}
                 aria-label={t('visitBody', { body: name })}
                 aria-current={isActive ? 'page' : undefined}
                 className={`group relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full ring-1 ring-transparent transition-[background-color,transform] duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 ${
@@ -147,6 +155,7 @@ export function BodyRail() {
                           <button
                             type="button"
                             onClick={() => {
+                              clearSpacecraft();
                               flyTo(moon.id);
                               setMoonDockFor(null);
                             }}

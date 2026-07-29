@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Html, Line } from '@react-three/drei';
@@ -8,13 +8,18 @@ import { useFlight } from '../flight/useFlight';
 import { useSimTime } from './useSimTime';
 import { useViewSettings } from './viewSettings';
 import { useSpacecraftState } from './spacecraftState';
+import { DeepSpaceCraftModel } from './SpacecraftModels';
+import { useSpacecraftSelection, writeSpacecraftPosition } from './spacecraftSelection';
+import { useTranslation } from '../ui/i18n';
 
 /**
  * Live deep-space craft — the Voyagers, New Horizons, Parker and JWST — placed
  * from real trajectory data (see data/spacecraft.ts). A ring marker sets them
- * apart from the dwarf-planet dots, and each carries its live distance from the
- * Sun, updated every frame straight on the DOM node so the readout never forces
- * a React re-render.
+ * apart from the dwarf-planet dots. Parker and Webb also carry a model: their
+ * vehicle geometry is deliberately display-scaled because kilometre-scale craft
+ * cannot be physically visible alongside AU-scale orbits. Each label carries
+ * its live distance from the Sun, updated directly on the DOM node so the
+ * readout never forces a React re-render.
  */
 
 /** A hollow ring, drawn once and shared, so a craft reads as a marker not a world. */
@@ -64,7 +69,19 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
   const orbitsVisible = useViewSettings((s) => s.orbitsVisible);
   const light = useViewSettings((s) => s.theme === 'light');
   const phase = useFlight((s) => s.phase);
+  const returnToOverview = useFlight((s) => s.returnToOverview);
   const live = useSpacecraftState((state) => state.states[craft.id]);
+  const selectedId = useSpacecraftSelection((state) => state.selectedId);
+  const select = useSpacecraftSelection((state) => state.select);
+  const { t } = useTranslation();
+  const hasVehicleModel = craft.id === 'parker' || craft.id === 'jwst';
+  const isInspectable = hasVehicleModel;
+
+  const inspect = () => {
+    if (!isInspectable) return;
+    select(craft.id);
+    returnToOverview();
+  };
 
   const orbitPoints = useMemo(() => {
     const sample = spacecraftOrbit(craft);
@@ -75,11 +92,24 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
     });
   }, [craft]);
 
+  const labelContent = (
+    <>
+      <span
+        className="whitespace-nowrap text-[9px] uppercase tracking-[0.16em]"
+        style={{ color: light ? '#475569' : craft.color }}
+      >
+        {craft.name}
+      </span>
+      <span ref={distance} className="text-[8px] tabular-nums text-white/45" />
+    </>
+  );
+
   useFrame(() => {
     if (!group.current) return;
     const position = spacecraftPosition(craft, useSimTime.getState().date, live);
     const [x, y, z] = heliocentricToScene(position);
     group.current.position.set(x, y, z);
+    writeSpacecraftPosition(craft.id, group.current.position);
     if (distance.current) {
       const au = Math.hypot(position.x, position.y, position.z);
       distance.current.textContent = `${au.toFixed(au < 10 ? 2 : 1)} AU`;
@@ -92,21 +122,59 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
         <Line points={orbitPoints} color={craft.color} transparent opacity={0.2} lineWidth={0.8} depthWrite={false} />
       )}
 
-      <group ref={group}>
-        <sprite scale={[1.5, 1.5, 1.5]}>
+      <group
+        ref={group}
+        onClick={isInspectable ? (event) => {
+          event.stopPropagation();
+          inspect();
+        } : undefined}
+        onPointerOver={(event) => {
+          if (!isInspectable) return;
+          event.stopPropagation();
+          document.body.style.cursor = 'pointer';
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = '';
+        }}
+      >
+        <sprite scale={[hasVehicleModel ? 1.85 : 1.5, hasVehicleModel ? 1.85 : 1.5, hasVehicleModel ? 1.85 : 1.5]}>
           <spriteMaterial map={ring} color={craft.color} transparent depthWrite={false} />
         </sprite>
 
-        {phase === 'overview' && (
-          <Html position={[0, 1.6, 0]} center distanceFactor={48} zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
-            <div className="flex flex-col items-center leading-tight">
-              <span
-                className="whitespace-nowrap text-[9px] uppercase tracking-[0.16em]"
-                style={{ color: light ? '#475569' : craft.color }}
+        {isInspectable && (
+          <mesh>
+            <sphereGeometry args={[3.2, 16, 12]} />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+        )}
+
+        {hasVehicleModel && (
+          <Suspense fallback={null}>
+            <DeepSpaceCraftModel id={craft.id} displayRadius={craft.id === 'jwst' ? 1.35 : 1.15} />
+          </Suspense>
+        )}
+
+        {phase === 'overview' && selectedId !== craft.id && (
+          <Html position={[0, 1.6, 0]} center distanceFactor={48} zIndexRange={[10, 0]}>
+            {isInspectable ? (
+              <button
+                type="button"
+                onClick={inspect}
+                aria-label={t('inspectSpacecraft', { craft: craft.name })}
+                className="flex cursor-pointer flex-col items-center rounded-md px-1.5 py-1 leading-tight transition-colors hover:bg-black/35 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-200/70"
               >
-                {craft.name}
-              </span>
-              <span ref={distance} className="text-[8px] tabular-nums text-white/45" />
+                {labelContent}
+              </button>
+            ) : (
+              <div className="pointer-events-none flex flex-col items-center leading-tight">{labelContent}</div>
+            )}
+          </Html>
+        )}
+
+        {selectedId === craft.id && (
+          <Html position={[0, -2.1, 0]} center distanceFactor={48} zIndexRange={[12, 0]} style={{ pointerEvents: 'none' }}>
+            <div className="rounded-full border border-sky-200/30 bg-black/75 px-3 py-1.5 text-center text-[9px] uppercase tracking-[0.18em] text-sky-100 shadow-lg shadow-black/40 backdrop-blur-md">
+              {craft.name}
             </div>
           </Html>
         )}
