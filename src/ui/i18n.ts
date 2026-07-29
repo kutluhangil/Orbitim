@@ -224,6 +224,8 @@ const EN = {
   ,days: 'days'
   ,spacecraftIllustration: 'Representative illustration of a {group} class spacecraft'
   ,inspectSpacecraft: 'Inspect 3D model of {craft}'
+  ,atlas: 'Atlas'
+  ,openAtlas: 'Open Explore Atlas'
 } as const;
 
 type TranslationKey = keyof typeof EN;
@@ -435,6 +437,8 @@ const TR: Record<TranslationKey, string> = {
   ,days: 'gün'
   ,spacecraftIllustration: '{group} sınıfı uzay aracını temsil eden illüstrasyon'
   ,inspectSpacecraft: '{craft} 3B modelini incele'
+  ,atlas: 'Atlas'
+  ,openAtlas: 'Keşfet Atlasını aç'
 };
 
 const TRANSLATIONS: Record<AppLanguage, Record<TranslationKey, string>> = { en: EN, tr: TR };

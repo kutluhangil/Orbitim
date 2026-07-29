@@ -1,4 +1,4 @@
-import { Languages, Moon, Orbit, PanelTopClose, SlidersHorizontal, Sun, Waypoints } from 'lucide-react';
+import { Compass, Languages, Moon, Orbit, PanelTopClose, SlidersHorizontal, Sun, Waypoints } from 'lucide-react';
 import { type KeyboardEvent, useState } from 'react';
 import { type ExperienceMode, useViewSettings } from '../scene/viewSettings';
 import { useSimTime } from '../scene/useSimTime';
@@ -9,7 +9,11 @@ import { useLanguage, useTranslation } from './i18n';
  * Mobile has one point of entry for scene controls so browser-safe-area chrome
  * cannot collide with the experience selector, share action or language switch.
  */
-export function MobileCockpitControl() {
+interface MobileCockpitControlProps {
+  onOpenAtlas: () => void;
+}
+
+export function MobileCockpitControl({ onOpenAtlas }: MobileCockpitControlProps) {
   const [open, setOpen] = useState(false);
   const mode = useViewSettings((state) => state.mode);
   const setMode = useViewSettings((state) => state.setMode);
@@ -114,6 +118,19 @@ export function MobileCockpitControl() {
               <span className="text-[8px] uppercase tracking-[0.12em]">{t('appearance')}</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onOpenAtlas();
+            }}
+            aria-label={t('openAtlas')}
+            className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-sky-300/25 bg-sky-300/[0.08] text-[9px] uppercase tracking-[0.16em] text-sky-100 transition-colors hover:border-sky-300/50 hover:bg-sky-300/[0.14]"
+          >
+            <Compass className="h-4 w-4" aria-hidden />
+            {t('atlas')}
+          </button>
 
           <div className="mt-2 flex items-center justify-between gap-2 border-t border-white/10 pt-2">
             <div

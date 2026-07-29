@@ -1,4 +1,4 @@
-import { Moon, Orbit, Sun, Waypoints } from 'lucide-react';
+import { Compass, Moon, Orbit, Sun, Waypoints } from 'lucide-react';
 import { useViewSettings } from '../scene/viewSettings';
 import { ShareLink } from './ShareLink';
 import { useLanguage, useTranslation } from './i18n';
@@ -10,7 +10,11 @@ import { useLanguage, useTranslation } from './i18n';
  * bodies against. The pills stay dark in both themes — they are instrument
  * chrome, legible over either backdrop.
  */
-export function ViewControls() {
+interface ViewControlsProps {
+  onOpenAtlas: () => void;
+}
+
+export function ViewControls({ onOpenAtlas }: ViewControlsProps) {
   const orbitsVisible = useViewSettings((s) => s.orbitsVisible);
   const toggleOrbits = useViewSettings((s) => s.toggleOrbits);
   const figuresVisible = useViewSettings((s) => s.figuresVisible);
@@ -26,6 +30,17 @@ export function ViewControls() {
 
   return (
     <div className="pointer-events-none fixed right-6 top-6 z-30 hidden items-center gap-2 md:flex">
+      <button
+        type="button"
+        onClick={onOpenAtlas}
+        aria-label={t('openAtlas')}
+        title={t('openAtlas')}
+        className="pointer-events-auto flex h-10 items-center gap-2 rounded-full border border-sky-300/25 bg-sky-300/[0.08] px-3.5 text-[10px] uppercase tracking-[0.16em] text-sky-100 backdrop-blur-xl transition-colors hover:border-sky-300/55 hover:bg-sky-300/[0.14]"
+      >
+        <Compass className="h-4 w-4" aria-hidden />
+        {t('atlas')}
+      </button>
+
       <button
         type="button"
         onClick={toggleOrbits}

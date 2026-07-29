@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added the bilingual Explore Atlas: a source-linked, distance-led reading layer over the live simulation, with 12 curated chapters and explicit observed/calculated/planned evidence labels.
 - Added official NASA VTAD source models and direct 3D inspection flights for Voyager 1, Voyager 2 and New Horizons; Voyager's shared source model is used only for its physically twin spacecraft.
 - Added direct, accessible fly-to inspection for the official NASA VTAD Parker Solar Probe glTF render and a lightweight, source-documented 3D James Webb observatory model at their live ephemeris positions; both retain display-only size exaggeration in the AU-scale scene.
 - Made client calls to Vercel data routes diagnose non-JSON local/proxy responses explicitly, including the required Vercel development context instead of surfacing a raw JSON parser error.
