@@ -3,6 +3,26 @@ import type { BodyId, BodyKind } from '../lib/ephemeris/bodies';
 
 export type AppLanguage = 'en' | 'tr';
 
+const LANGUAGE_STORAGE_KEY = 'orbitim.language';
+
+function readPersistedLanguage(): AppLanguage {
+  try {
+    const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    return stored === 'tr' ? 'tr' : 'en';
+  } catch (cause) {
+    console.warn('Orbitim could not read the saved language preference.', cause);
+    return 'en';
+  }
+}
+
+function persistLanguage(language: AppLanguage): void {
+  try {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+  } catch (cause) {
+    console.warn('Orbitim could not save the language preference.', cause);
+  }
+}
+
 interface LanguageState {
   language: AppLanguage;
   setLanguage: (language: AppLanguage) => void;
@@ -13,8 +33,11 @@ interface LanguageState {
  * leaves shared simulation links about the sky, not a reader preference.
  */
 export const useLanguage = create<LanguageState>((set) => ({
-  language: 'en',
-  setLanguage: (language) => set({ language })
+  language: readPersistedLanguage(),
+  setLanguage: (language) => {
+    persistLanguage(language);
+    set({ language });
+  }
 }));
 
 const EN = {
@@ -226,6 +249,8 @@ const EN = {
   ,inspectSpacecraft: 'Inspect 3D model of {craft}'
   ,atlas: 'Atlas'
   ,openAtlas: 'Open Explore Atlas'
+  ,dataHealth: 'Data health'
+  ,openDataHealth: 'Open data health'
 } as const;
 
 type TranslationKey = keyof typeof EN;
@@ -439,6 +464,8 @@ const TR: Record<TranslationKey, string> = {
   ,inspectSpacecraft: '{craft} 3B modelini incele'
   ,atlas: 'Atlas'
   ,openAtlas: 'Keşfet Atlasını aç'
+  ,dataHealth: 'Veri sağlığı'
+  ,openDataHealth: 'Veri sağlığını aç'
 };
 
 const TRANSLATIONS: Record<AppLanguage, Record<TranslationKey, string>> = { en: EN, tr: TR };

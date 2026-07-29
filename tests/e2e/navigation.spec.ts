@@ -30,6 +30,22 @@ test('mobile scene controls open from one collision-free cockpit and localize', 
   await expect(cockpit.getByRole('button', { name: 'Görünümü paylaş' })).toBeVisible();
 });
 
+test('Data Health keeps observed, calculated and operational sources distinct', async ({ page }) => {
+  await enterSystem(page);
+
+  await page.getByRole('button', { name: 'Open scene controls' }).click();
+  await page.getByRole('button', { name: 'Open data health' }).click();
+
+  const health = page.getByRole('dialog', { name: 'Evidence map' });
+  await expect(health).toBeVisible();
+  await expect(health.getByText('Rendered surfaces and moon models', { exact: true })).toBeVisible();
+  await expect(health.getByText('Operational satellite tracking', { exact: true })).toBeVisible();
+  await expect(health.getByText('This is operational orbital data, not a NASA data service', { exact: false })).toBeVisible();
+
+  await health.getByRole('button', { name: 'Return to simulation' }).click();
+  await expect(health).toBeHidden();
+});
+
 test('Earth exposes the Moon through its child dock', async ({ page }) => {
   await enterSystem(page);
 

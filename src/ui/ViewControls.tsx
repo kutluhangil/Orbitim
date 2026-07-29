@@ -1,4 +1,4 @@
-import { Compass, Moon, Orbit, Sun, Waypoints } from 'lucide-react';
+import { Activity, Compass, Moon, Orbit, Sun, Waypoints } from 'lucide-react';
 import { useViewSettings } from '../scene/viewSettings';
 import { ShareLink } from './ShareLink';
 import { useLanguage, useTranslation } from './i18n';
@@ -12,9 +12,10 @@ import { useLanguage, useTranslation } from './i18n';
  */
 interface ViewControlsProps {
   onOpenAtlas: () => void;
+  onOpenDataHealth: () => void;
 }
 
-export function ViewControls({ onOpenAtlas }: ViewControlsProps) {
+export function ViewControls({ onOpenAtlas, onOpenDataHealth }: ViewControlsProps) {
   const orbitsVisible = useViewSettings((s) => s.orbitsVisible);
   const toggleOrbits = useViewSettings((s) => s.toggleOrbits);
   const figuresVisible = useViewSettings((s) => s.figuresVisible);
@@ -39,6 +40,16 @@ export function ViewControls({ onOpenAtlas }: ViewControlsProps) {
       >
         <Compass className="h-4 w-4" aria-hidden />
         {t('atlas')}
+      </button>
+
+      <button
+        type="button"
+        onClick={onOpenDataHealth}
+        aria-label={t('openDataHealth')}
+        title={t('openDataHealth')}
+        className={`${iconButton} border-white/10 text-white/62 hover:border-sky-300/50 hover:text-sky-100`}
+      >
+        <Activity className="h-4 w-4" aria-hidden />
       </button>
 
       <button

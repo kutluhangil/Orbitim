@@ -13,6 +13,7 @@ import { ExperienceModeControl } from './ui/ExperienceModeControl';
 import { MobileCockpitControl } from './ui/MobileCockpitControl';
 import { EventTimeline } from './ui/EventTimeline';
 import { ExploreAtlas } from './ui/ExploreAtlas';
+import { DataHealthPanel } from './ui/DataHealthPanel';
 import { useFlight } from './flight/useFlight';
 import { SatellitePanel } from './ui/SatellitePanel';
 import { SatelliteInfo } from './ui/SatelliteInfo';
@@ -35,7 +36,9 @@ function nonDefaultGroups(enabled: string[]): string[] | null {
 function App() {
   const [entered, setEntered] = useState(false);
   const [atlasOpen, setAtlasOpen] = useState(false);
+  const [dataHealthOpen, setDataHealthOpen] = useState(false);
   const atlasTrigger = useRef<HTMLElement | null>(null);
+  const dataHealthTrigger = useRef<HTMLElement | null>(null);
   const returnToOverview = useFlight((s) => s.returnToOverview);
   const satellite = useSatelliteSelection((s) => s.selected);
   const mode = useViewSettings((s) => s.mode);
@@ -89,7 +92,7 @@ function App() {
   useEffect(() => {
     if (!entered) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || atlasOpen) return;
+      if (event.key !== 'Escape' || atlasOpen || dataHealthOpen) return;
 
       const selection = useSatelliteSelection.getState();
       if (selection.selected) {
@@ -107,7 +110,7 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [atlasOpen, entered, returnToOverview]);
+  }, [atlasOpen, dataHealthOpen, entered, returnToOverview]);
 
   const openAtlas = () => {
     atlasTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -119,11 +122,21 @@ function App() {
     window.requestAnimationFrame(() => atlasTrigger.current?.focus());
   };
 
+  const openDataHealth = () => {
+    dataHealthTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setDataHealthOpen(true);
+  };
+
+  const closeDataHealth = () => {
+    setDataHealthOpen(false);
+    window.requestAnimationFrame(() => dataHealthTrigger.current?.focus());
+  };
+
   return (
     /* Dynamic viewport units: on a phone `100vh` is the tallest the browser
        chrome ever gets, which leaves the scene cropped under the address bar. */
     <div className="relative h-[100dvh] w-screen overflow-hidden bg-black text-white antialiased">
-      <div id="simulation-shell" className="contents" aria-hidden={atlasOpen || undefined} inert={atlasOpen || undefined}>
+      <div id="simulation-shell" className="contents" aria-hidden={atlasOpen || dataHealthOpen || undefined} inert={atlasOpen || dataHealthOpen || undefined}>
       <SceneRoot />
 
       {entered ? (
@@ -139,8 +152,8 @@ function App() {
           <LaplacePanel />
           <SatellitePanel />
           <ExperienceModeControl />
-          <ViewControls onOpenAtlas={openAtlas} />
-          <MobileCockpitControl onOpenAtlas={openAtlas} />
+          <ViewControls onOpenAtlas={openAtlas} onOpenDataHealth={openDataHealth} />
+          <MobileCockpitControl onOpenAtlas={openAtlas} onOpenDataHealth={openDataHealth} />
           <TimeControls />
         </>
       ) : (
@@ -148,6 +161,7 @@ function App() {
       )}
       </div>
       {atlasOpen && <ExploreAtlas onClose={closeAtlas} />}
+      {dataHealthOpen && <DataHealthPanel onClose={closeDataHealth} />}
     </div>
   );
 }
