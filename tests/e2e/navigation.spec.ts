@@ -46,6 +46,18 @@ test('Data Health keeps observed, calculated and operational sources distinct', 
   await expect(health).toBeHidden();
 });
 
+test('scene exposes a recoverable WebGL context state', async ({ page }) => {
+  await page.goto('/');
+  const canvas = page.locator('canvas');
+  await expect(canvas).toBeVisible();
+
+  await canvas.evaluate((element) => element.dispatchEvent(new Event('webglcontextlost', { cancelable: true })));
+  await expect(page.getByRole('status')).toContainText('Restoring WebGL scene');
+
+  await canvas.evaluate((element) => element.dispatchEvent(new Event('webglcontextrestored')));
+  await expect(page.getByRole('status')).toBeHidden();
+});
+
 test('Earth exposes the Moon through its child dock', async ({ page }) => {
   await enterSystem(page);
 
