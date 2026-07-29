@@ -373,6 +373,54 @@ test.describe('desktop Explore Atlas', () => {
     await expect(card.getByRole('link', { name: 'Open source for Test Wildfire' })).toHaveAttribute('href', 'https://example.test/events/test-wildfire');
   });
 
+  test('Explore Atlas keeps TESS PC candidates separate from confirmed planets', async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.route('**/api/exoplanets?*', async (route) => {
+      await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ records: [], total: 0, page: 0, limit: 48, source: 'NASA Exoplanet Archive · PSCompPars', sourceUrl: 'https://exoplanetarchive.ipac.caltech.edu/docs/API_resources.html', fetchedAt: '2026-07-29T12:00:00.000Z' }) });
+    });
+    await page.route('**/api/tess-candidates?*', async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          records: [{ toi: '1234.01', ticId: 987654321, disposition: 'PC', periodDays: 3.21, durationHours: 2.3, transitDepthPpm: 610, radiusEarth: 1.8, insolationEarth: null, equilibriumTemperatureK: 840, distanceParsecs: 98.4, starTemperatureK: null, rightAscensionDeg: null, declinationDeg: null, createdAt: null, releaseDate: null, sectors: null }],
+          total: 1, page: 0, limit: 48, source: 'NASA Exoplanet Archive · TESS TOI · PC', sourceUrl: 'https://exoplanetarchive.ipac.caltech.edu/docs/TAP/usingTAP.html', fetchedAt: '2026-07-29T12:00:00.000Z'
+        })
+      });
+    });
+
+    await enterDesktopSystem(page);
+    await page.getByRole('button', { name: 'Open Explore Atlas' }).click();
+    const atlas = page.getByRole('dialog', { name: 'Orbitim Explore Atlas' });
+    await atlas.getByRole('button', { name: 'Other worlds' }).click();
+    await atlas.getByRole('tab', { name: 'TESS candidates' }).click();
+    await expect(atlas.getByRole('heading', { name: 'TESS planet candidates' })).toBeVisible();
+    await expect(atlas.getByText('Planet candidate · not confirmed', { exact: true })).toBeVisible();
+    await expect(atlas.getByRole('heading', { name: 'TOI 1234.01' })).toBeVisible();
+    await expect(atlas.getByRole('link', { name: 'Open NASA TAP documentation' })).toHaveAttribute('href', 'https://exoplanetarchive.ipac.caltech.edu/docs/TAP/usingTAP.html');
+  });
+
+  test('Explore Atlas preserves NASA media IDs and original-record links', async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.route('**/api/nasa-media?*', async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: [{ nasaId: 'jwst-test-image', title: 'Test Webb mirror', description: 'NASA supplied archive caption.', center: 'GSFC', dateCreated: '2026-07-01T00:00:00Z', thumbnailUrl: 'https://example.test/jwst-thumb.jpg', assetUrl: 'https://images.nasa.gov/details/jwst-test-image' }],
+          total: 1, page: 1, limit: 20, omittedItems: 0, source: 'NASA Image and Video Library', sourceUrl: 'https://images.nasa.gov/search-results?q=James%20Webb%20Space%20Telescope', fetchedAt: '2026-07-29T12:00:00.000Z'
+        })
+      });
+    });
+
+    await enterDesktopSystem(page);
+    await page.getByRole('button', { name: 'Open Explore Atlas' }).click();
+    const atlas = page.getByRole('dialog', { name: 'Orbitim Explore Atlas' });
+    await atlas.getByRole('button', { name: 'How we know' }).click();
+    await expect(atlas.locator('#nasa-media-library-title')).toBeVisible();
+    await expect(atlas.getByText('NASA ID · jwst-test-image', { exact: true })).toBeVisible();
+    await expect(atlas.getByRole('img', { name: 'Test Webb mirror' })).toBeVisible();
+    await expect(atlas.getByRole('link', { name: 'Open original NASA record' }).first()).toHaveAttribute('href', 'https://images.nasa.gov/details/jwst-test-image');
+  });
+
   test('Escape returns to the same selected world', async ({ page }) => {
     await enterDesktopSystem(page);
 

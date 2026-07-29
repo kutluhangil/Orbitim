@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Database, Search, Telescope } from
 import { useEffect, useState } from 'react';
 import { fetchExoplanets, type ExoplanetMethod, type ExoplanetPage, type ExoplanetRecord } from '../services/exoplanets';
 import { useLanguage } from './i18n';
+import { TessCandidateCatalog } from './TessCandidateCatalog';
 
 const COPY = {
   en: {
@@ -50,7 +51,9 @@ const COPY = {
     kelvin: 'K',
     au: 'AU',
     fetched: 'Fetched {time} UTC',
-    archive: 'Open NASA archive documentation'
+    archive: 'Open NASA archive documentation',
+    confirmedTab: 'Confirmed archive',
+    candidatesTab: 'TESS candidates'
   },
   tr: {
     eyebrow: 'Canlı arşiv bağlantısı',
@@ -98,7 +101,9 @@ const COPY = {
     kelvin: 'K',
     au: 'AU',
     fetched: '{time} UTC alındı',
-    archive: 'NASA arşiv belgelerini aç'
+    archive: 'NASA arşiv belgelerini aç',
+    confirmedTab: 'Doğrulanmış arşiv',
+    candidatesTab: 'TESS adayları'
   }
 } as const;
 
@@ -143,6 +148,38 @@ function comparisonWidth(value: number, cap: number): string {
 export function ExoplanetCatalog() {
   const language = useLanguage((state) => state.language);
   const copy = COPY[language];
+  const [catalogue, setCatalogue] = useState<'confirmed' | 'candidates'>('confirmed');
+
+  return (
+    <section className="mt-10 border-t border-sky-100/10 pt-8" aria-label={language === 'tr' ? 'Ötegezegen arşivleri' : 'Exoplanet archives'}>
+      <nav role="tablist" aria-label={language === 'tr' ? 'Ötegezegen katalog türü' : 'Exoplanet catalogue type'} className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={catalogue === 'confirmed'}
+          onClick={() => setCatalogue('confirmed')}
+          className={`h-9 rounded-full border px-3 text-[9px] uppercase tracking-[0.14em] transition-colors ${catalogue === 'confirmed' ? 'border-amber-300/35 bg-amber-300/[0.12] text-amber-100' : 'border-white/10 bg-white/[0.02] text-slate-400 hover:border-white/25 hover:text-slate-100'}`}
+        >
+          {copy.confirmedTab}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={catalogue === 'candidates'}
+          onClick={() => setCatalogue('candidates')}
+          className={`h-9 rounded-full border px-3 text-[9px] uppercase tracking-[0.14em] transition-colors ${catalogue === 'candidates' ? 'border-violet-300/35 bg-violet-300/[0.12] text-violet-100' : 'border-white/10 bg-white/[0.02] text-slate-400 hover:border-white/25 hover:text-slate-100'}`}
+        >
+          {copy.candidatesTab}
+        </button>
+      </nav>
+      {catalogue === 'confirmed' ? <ConfirmedExoplanetCatalog /> : <TessCandidateCatalog />}
+    </section>
+  );
+}
+
+function ConfirmedExoplanetCatalog() {
+  const language = useLanguage((state) => state.language);
+  const copy = COPY[language];
   const [search, setSearch] = useState('');
   const [method, setMethod] = useState<ExoplanetMethod>('all');
   const [page, setPage] = useState(0);
@@ -172,7 +209,7 @@ export function ExoplanetCatalog() {
   const totalPages = result ? Math.max(1, Math.ceil(result.total / result.limit)) : 1;
 
   return (
-    <section aria-labelledby="exoplanet-catalog-title" className="mt-10 border-t border-sky-100/10 pt-10">
+    <section aria-labelledby="exoplanet-catalog-title" className="mt-6">
       <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
         <div className="max-w-2xl">
           <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-amber-200/80">{copy.eyebrow}</p>

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a sourced NASA Image and Video Library search inside Explore Atlas, retaining NASA IDs, source centres, supplied creation metadata and original-record links; added a separate TESS TOI PC catalogue so unconfirmed candidates never share the confirmed-planet view or enter the simulated scene.
 - Added a bounded NASA EONET open-natural-event catalogue to Earth's Now dossier, with the latest source geometry, category, time, optional magnitude and source link explicitly kept separate from imagery and incident boundaries.
 - Added seven NASA DONKI solar-impact feeds for energetic particles, heliospheric shocks and streams, radiation-belt and magnetopause events, research notices and WSA–Enlil model runs; the interface now marks observed events, research reports, model output and unavailable sources separately.
 - Moved the desktop experience-mode selector below the top control row so Now, Scientific and Explore remain directly clickable at practical laptop widths.
