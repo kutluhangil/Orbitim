@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a bounded, source-timestamped JPL Small-Body Database explorer for named asteroids and comets, including published orbit/physical fields and explicitly non-predictive Earth-approach records.
 - Added six bilingual, NASA-source-linked Time Journeys that pause the calculated scene at cited UTC moments and state the boundary between body ephemerides and unrendered historical spacecraft paths.
 - Added resilient WebGL startup/recovery UI, visibility-aware rendering, an explicit scene-error restart path and measured adaptive canvas pixel density for sustained low frame rates.
 - Added a bilingual Data Health evidence map that distinguishes calculated ephemerides, archived NASA/USGS assets, operational CelesTrak tracking and source limitations; the selected interface language now persists locally.

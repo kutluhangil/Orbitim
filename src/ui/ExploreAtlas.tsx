@@ -11,6 +11,7 @@ import { useLanguage } from './i18n';
 const ExoplanetCatalog = lazy(() => import('./ExoplanetCatalog').then(({ ExoplanetCatalog: Component }) => ({ default: Component })));
 const DeepSkyGallery = lazy(() => import('./DeepSkyGallery').then(({ DeepSkyGallery: Component }) => ({ default: Component })));
 const DeepSkyLookup = lazy(() => import('./DeepSkyLookup').then(({ DeepSkyLookup: Component }) => ({ default: Component })));
+const SmallBodyExplorer = lazy(() => import('./SmallBodyExplorer').then(({ SmallBodyExplorer: Component }) => ({ default: Component })));
 
 interface ExploreAtlasProps {
   onClose: () => void;
@@ -289,11 +290,12 @@ export function ExploreAtlas({ onClose }: ExploreAtlasProps) {
                 })}
               </div>
 
-              {(selected.id === 'confirmed-exoplanets' || selectedHasGallery || selected.id === 'deep-sky-search') && (
+              {(selected.id === 'confirmed-exoplanets' || selectedHasGallery || selected.id === 'deep-sky-search' || selected.id === 'small-body-search') && (
                 <Suspense fallback={<AtlasModuleLoading language={language} />}>
                   {selected.id === 'confirmed-exoplanets' && <ExoplanetCatalog />}
                   {selectedHasGallery && <div ref={attachGalleryRef}><DeepSkyGallery /></div>}
                   {selected.id === 'deep-sky-search' && <DeepSkyLookup />}
+                  {selected.id === 'small-body-search' && <SmallBodyExplorer />}
                 </Suspense>
               )}
             </div>

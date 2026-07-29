@@ -75,6 +75,42 @@ test('a Time Journey pauses the cited instant and starts a continuous body fligh
   await expect.poll(() => new URL(page.url()).hash).toContain('t=1969-07-20T20%3A17%3A40Z');
 });
 
+test('Explore Atlas reads a bounded, source-stamped JPL small-body record', async ({ page }) => {
+  const requestedUrls: string[] = [];
+  await page.route('**/api/small-body?*', async (route) => {
+    const requestUrl = new URL(route.request().url());
+    requestedUrls.push(requestUrl.toString());
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        kind: 'resolved', query: requestUrl.searchParams.get('q'), matches: [],
+        record: {
+          name: '99942 Apophis (2004 MN4)', designation: '99942', kind: 'an', orbitClass: 'Aten', neo: true, pha: true,
+          diameterKm: 0.34, absoluteMagnitude: 19.09, albedo: 0.3, rotationHours: 30.56,
+          perihelionAu: 0.746, aphelionAu: 1.099, semiMajorAu: 0.922, eccentricity: 0.191, inclinationDeg: 3.34,
+          earthMoidAu: 0.00025, conditionCode: '0', lastObserved: '2026-07-28',
+          earthApproaches: [{ at: '2029-Apr-13 21:46', distanceAu: 0.00025, velocityKmS: 5.84, uncertainty: '< 00:01' }],
+          detailUrl: 'https://ssd-api.jpl.nasa.gov/sbdb.api?sstr=99942'
+        },
+        source: 'NASA/JPL Small-Body Database (SBDB) API', sourceUrl: 'https://ssd-api.jpl.nasa.gov/doc/sbdb.html', fetchedAt: '2026-07-29T12:00:00.000Z'
+      })
+    });
+  });
+
+  await enterSystem(page);
+  await page.getByRole('button', { name: 'Open scene controls' }).click();
+  await page.getByRole('button', { name: 'Open Explore Atlas' }).click();
+  const atlas = page.getByRole('dialog', { name: 'Orbitim Explore Atlas' });
+  await atlas.getByRole('button', { name: 'Open atlas entry: Small-body intelligence' }).click();
+  await expect(atlas.getByRole('heading', { name: 'Read a small body before drawing it.' })).toBeVisible();
+  await atlas.getByRole('textbox', { name: 'Asteroid or comet; e.g. Apophis or 1P/Halley' }).fill('Apophis');
+  await atlas.getByRole('button', { name: 'Resolve body' }).click();
+  await expect(atlas.getByText('99942 Apophis (2004 MN4)', { exact: true })).toBeVisible();
+  await expect(atlas.getByText('Potentially hazardous', { exact: true })).toBeVisible();
+  await expect(atlas.getByRole('link', { name: 'Open SBDB documentation' })).toHaveAttribute('href', 'https://ssd-api.jpl.nasa.gov/doc/sbdb.html');
+  await expect.poll(() => requestedUrls.some((value) => new URL(value).searchParams.get('q') === 'Apophis')).toBeTruthy();
+});
+
 test('Earth exposes the Moon through its child dock', async ({ page }) => {
   await enterSystem(page);
 

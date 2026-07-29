@@ -52,6 +52,12 @@ export const ATLAS_ENTRIES: readonly AtlasEntry[] = [
     tr: { title: 'Ölçülmüş bir yüzey', eyebrow: 'Yakından Mars', summary: 'Görevlerin, arazinin ve iniş noktalarının tek bağlamda buluştuğu dünya.', detail: 'Görev işaretleri, kürenin gezilebilir kalması için kendi okuma kartlarına açılır. Yüzey rölyefi uydurma detay olarak değil, ölçülmüş arazi olarak belirtilir.', facts: ['Görev işaretleri yerel okuma kartları açar', 'Bilimsel modda MOLA arazi kaynağı belirtilir', 'Uzak yüzdeki bir noktanın görünür olduğu ima edilmez'] }
   },
   {
+    id: 'small-body-search', chapter: 'system', evidence: 'observed', distance: 'Object search',
+    source: { label: 'JPL Small-Body Database', url: 'https://ssd-api.jpl.nasa.gov/doc/sbdb.html' },
+    en: { title: 'Small-body intelligence', eyebrow: 'Live, bounded search', summary: 'Read a known asteroid or comet record without turning the scene into an unbounded point cloud.', detail: 'The JPL Small-Body Database is requested through a bounded server route. It reports orbit, physical fields and supplied Earth approach records as data, not as a visibility or impact forecast.', facts: ['One named body at a time', 'JPL source timestamp retained', 'No fake all-asteroid render'] },
+    tr: { title: 'Küçük cisim zekâsı', eyebrow: 'Canlı, sınırlı arama', summary: 'Sahneyi sınırsız nokta bulutuna çevirmeden bilinen bir asteroit veya kuyrukluyıldız kaydını okuyun.', detail: 'JPL Küçük Cisim Veritabanı, sınırlandırılmış sunucu rotası üzerinden istenir. Yörüngeyi, fiziksel alanları ve sağlanan Dünya yaklaşım kayıtlarını görünürlük ya da çarpışma tahmini olarak değil, veri olarak verir.', facts: ['Her seferinde bir adlandırılmış cisim', 'JPL kaynak zaman damgası korunur', 'Sahte tüm-asteroit renderı yok'] }
+  },
+  {
     id: 'confirmed-exoplanets', chapter: 'worlds', evidence: 'observed', distance: 'Light-years',
     source: { label: 'NASA Exoplanet Catalog', url: 'https://science.nasa.gov/exoplanets/exoplanet-catalog/' },
     en: { title: 'Confirmed worlds', eyebrow: 'Live archive', summary: 'Search confirmed NASA Exoplanet Archive records without mistaking missing measurements for estimates.', detail: 'The catalogue is fetched from NASA’s Exoplanet Archive as a time-stamped server snapshot. Search, filters and pagination use that one named source; missing archive values remain unreported.', facts: ['NASA Archive data, not hand-maintained rows', 'All published discovery methods retained', 'Unknown values remain unknown'] },
