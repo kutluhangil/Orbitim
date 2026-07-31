@@ -507,6 +507,22 @@ test.describe('desktop Explore Atlas', () => {
     await expect(observer.getByText('Europe/Istanbul', { exact: false })).toBeVisible();
     await expect(observer.getByText('Universal time', { exact: false })).toBeVisible();
   });
+
+  test('JWST inspection keeps its screen label compact at close range', async ({ page }) => {
+    test.setTimeout(120_000);
+    await enterDesktopSystem(page);
+
+    const inspectWebb = page.getByRole('button', { name: 'Inspect 3D model of James Webb' });
+    await inspectWebb.click();
+    await expect(inspectWebb).toBeHidden();
+
+    const activeLabel = page.getByText('James Webb', { exact: true });
+    await expect(activeLabel).toBeVisible();
+    const bounds = await activeLabel.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.width).toBeLessThan(220);
+    expect(bounds!.height).toBeLessThan(72);
+  });
 });
 
 test('NASA deep-space 3D models are served to the live WebGL scene', async ({ page }) => {
@@ -533,6 +549,13 @@ test('Parker label opens and leaves a 3D inspection flight', async ({ page }) =>
   await expect(inspectParker).toBeVisible();
   await inspectParker.click();
   await expect(inspectParker).toBeHidden();
+
+  const activeLabel = page.getByText('Parker Solar Probe', { exact: true });
+  await expect(activeLabel).toBeVisible();
+  const bounds = await activeLabel.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.width).toBeLessThan(160);
+  expect(bounds!.height).toBeLessThan(56);
 
   await page.keyboard.press('Escape');
   await expect(inspectParker).toBeVisible();

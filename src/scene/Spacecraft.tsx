@@ -14,38 +14,16 @@ import { useTranslation } from '../ui/i18n';
 
 /**
  * Live deep-space craft — the Voyagers, New Horizons, Parker and JWST — placed
- * from real trajectory data (see data/spacecraft.ts). A ring marker sets them
- * apart from the dwarf-planet dots. Every craft carries a model: their vehicle
- * geometry is deliberately display-scaled because kilometre-scale craft cannot
- * be physically visible alongside AU-scale orbits. Each label carries its live
- * distance from the Sun, updated directly on the DOM node so the readout never
- * forces a React re-render.
+ * from real trajectory data (see data/spacecraft.ts). Every craft carries a
+ * model: their vehicle geometry is deliberately display-scaled because
+ * kilometre-scale craft cannot be physically visible alongside AU-scale
+ * orbits. Each label carries its live distance from the Sun, updated directly
+ * on the DOM node so the readout never forces a React re-render. Inspection
+ * models remain the only spacecraft geometry in close views, without a
+ * decorative marker competing with the vehicle itself.
  */
 
-/** A hollow ring, drawn once and shared, so a craft reads as a marker not a world. */
-let ringTexture: THREE.Texture | null = null;
-function getRingTexture(): THREE.Texture {
-  if (ringTexture) return ringTexture;
-  const size = 64;
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
-  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-  ctx.lineWidth = 5;
-  ctx.beginPath();
-  ctx.arc(size / 2, size / 2, size / 2 - 8, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,0.95)';
-  ctx.beginPath();
-  ctx.arc(size / 2, size / 2, 4, 0, Math.PI * 2);
-  ctx.fill();
-  ringTexture = new THREE.CanvasTexture(canvas);
-  ringTexture.colorSpace = THREE.SRGBColorSpace;
-  return ringTexture;
-}
-
 export function Spacecraft() {
-  const ring = useMemo(getRingTexture, []);
   const refresh = useSpacecraftState((state) => state.refresh);
 
   useEffect(() => {
@@ -57,13 +35,13 @@ export function Spacecraft() {
   return (
     <group>
       {SPACECRAFT.map((craft) => (
-        <CraftMarker key={craft.id} craft={craft} ring={ring} />
+        <CraftMarker key={craft.id} craft={craft} />
       ))}
     </group>
   );
 }
 
-function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
+function CraftMarker({ craft }: { craft: Craft }) {
   const group = useRef<THREE.Group>(null);
   const distance = useRef<HTMLSpanElement>(null);
   const orbitsVisible = useViewSettings((s) => s.orbitsVisible);
@@ -92,12 +70,12 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
   const labelContent = (
     <>
       <span
-        className="whitespace-nowrap text-[9px] uppercase tracking-[0.16em]"
+        className="whitespace-nowrap text-[8px] uppercase tracking-[0.13em]"
         style={{ color: light ? '#475569' : craft.color }}
       >
         {craft.name}
       </span>
-      <span ref={distance} className="text-[8px] tabular-nums text-white/45" />
+      <span ref={distance} className="text-[7px] tabular-nums text-white/45" />
     </>
   );
 
@@ -133,10 +111,6 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
           document.body.style.cursor = '';
         }}
       >
-        <sprite scale={[1.85, 1.85, 1.85]}>
-          <spriteMaterial map={ring} color={craft.color} transparent depthWrite={false} />
-        </sprite>
-
         <mesh>
           <sphereGeometry args={[3.2, 16, 12]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
@@ -163,8 +137,8 @@ function CraftMarker({ craft, ring }: { craft: Craft; ring: THREE.Texture }) {
         )}
 
         {selectedId === craft.id && (
-          <Html position={[0, -2.1, 0]} center distanceFactor={48} zIndexRange={[12, 0]} style={{ pointerEvents: 'none' }}>
-            <div className="rounded-full border border-sky-200/30 bg-black/75 px-3 py-1.5 text-center text-[9px] uppercase tracking-[0.18em] text-sky-100 shadow-lg shadow-black/40 backdrop-blur-md">
+          <Html position={[0, -2.1, 0]} center zIndexRange={[12, 0]} style={{ pointerEvents: 'none' }}>
+            <div className="whitespace-nowrap rounded-full border border-sky-200/30 bg-black/75 px-2 py-0.5 text-center text-[7px] uppercase tracking-[0.12em] text-sky-100 shadow-lg shadow-black/40 backdrop-blur-md">
               {craft.name}
             </div>
           </Html>

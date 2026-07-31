@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Removed decorative ring markers from every deep-space craft and reduced spacecraft labels to a compact fixed screen size, preventing JWST and Parker markers or text from overwhelming close views.
 - Added a bounded NASA archive finder in Explore Atlas: Earthdata CMR collection metadata and PDS target-context records retain original source links, access/coverage boundaries and fetched timestamps without downloading or misrepresenting science products.
 - Added a sourced NASA Image and Video Library search inside Explore Atlas, retaining NASA IDs, source centres, supplied creation metadata and original-record links; added a separate TESS TOI PC catalogue so unconfirmed candidates never share the confirmed-planet view or enter the simulated scene.
 - Added a bounded NASA EONET open-natural-event catalogue to Earth's Now dossier, with the latest source geometry, category, time, optional magnitude and source link explicitly kept separate from imagery and incident boundaries.
