@@ -508,20 +508,23 @@ test.describe('desktop Explore Atlas', () => {
     await expect(observer.getByText('Universal time', { exact: false })).toBeVisible();
   });
 
-  test('JWST inspection keeps its screen label compact at close range', async ({ page }) => {
+  test('JWST inspection opens a source-backed mission dossier', async ({ page }) => {
     test.setTimeout(120_000);
     await enterDesktopSystem(page);
 
     const inspectWebb = page.getByRole('button', { name: 'Inspect 3D model of James Webb' });
-    await inspectWebb.click();
+    await inspectWebb.focus();
+    await inspectWebb.press('Enter');
     await expect(inspectWebb).toBeHidden();
 
-    const activeLabel = page.getByText('James Webb', { exact: true });
-    await expect(activeLabel).toBeVisible();
-    const bounds = await activeLabel.boundingBox();
-    expect(bounds).not.toBeNull();
-    expect(bounds!.width).toBeLessThan(220);
-    expect(bounds!.height).toBeLessThan(72);
+    const dossier = page.getByRole('dialog', { name: 'James Webb mission dossier' });
+    await expect(dossier).toBeVisible();
+    await expect(dossier.getByText('Launch date', { exact: true })).toBeVisible();
+    await expect(dossier.getByText('December 25, 2021', { exact: true })).toBeVisible();
+    await expect(dossier.getByRole('link', { name: 'Open NASA mission source' })).toHaveAttribute(
+      'href',
+      'https://science.nasa.gov/mission/webb/'
+    );
   });
 });
 
@@ -542,7 +545,7 @@ test('NASA deep-space 3D models are served to the live WebGL scene', async ({ pa
   await expect(page.locator('canvas')).toBeVisible();
 });
 
-test('Parker label opens and leaves a 3D inspection flight', async ({ page }) => {
+test('Parker inspection opens and closes a mission dossier', async ({ page }) => {
   await enterSystem(page);
 
   const inspectParker = page.getByRole('button', { name: 'Inspect 3D model of Parker Solar Probe' });
@@ -550,14 +553,18 @@ test('Parker label opens and leaves a 3D inspection flight', async ({ page }) =>
   await inspectParker.click();
   await expect(inspectParker).toBeHidden();
 
-  const activeLabel = page.getByText('Parker Solar Probe', { exact: true });
-  await expect(activeLabel).toBeVisible();
-  const bounds = await activeLabel.boundingBox();
-  expect(bounds).not.toBeNull();
-  expect(bounds!.width).toBeLessThan(160);
-  expect(bounds!.height).toBeLessThan(56);
+  const dossier = page.getByRole('dialog', { name: 'Parker Solar Probe mission dossier' });
+  await expect(dossier).toBeVisible();
+  await expect(dossier.getByText('Launch date', { exact: true })).toBeVisible();
+  await expect(dossier.getByText('August 12, 2018', { exact: true })).toBeVisible();
+  await expect(dossier.getByText('Mission purpose', { exact: true })).toBeVisible();
+  await expect(dossier.getByRole('link', { name: 'Open NASA mission source' })).toHaveAttribute(
+    'href',
+    'https://science.nasa.gov/mission/parker-solar-probe/'
+  );
 
-  await page.keyboard.press('Escape');
+  await dossier.getByRole('button', { name: 'Close mission dossier' }).click();
+  await expect(dossier).toBeHidden();
   await expect(inspectParker).toBeVisible();
 });
 

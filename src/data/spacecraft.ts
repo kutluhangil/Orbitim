@@ -32,6 +32,19 @@ interface Vec3 {
   z: number;
 }
 
+interface LocalizedText {
+  en: string;
+  tr: string;
+}
+
+interface MissionDossier {
+  /** UTC launch instant, kept as data so the displayed date can follow the UI language. */
+  launchDate: string;
+  purpose: LocalizedText;
+  milestone: LocalizedText;
+  sourceUrl: string;
+}
+
 type SpacecraftModel =
   /** EQJ heliocentric state vector (km, km/s) drifted at constant velocity. */
   | { kind: 'coast'; posKm: Vec3; velKmS: Vec3 }
@@ -47,6 +60,8 @@ export interface Spacecraft {
   /** Launch year. */
   launched: number;
   note: string;
+  /** NASA-source-backed facts shown in the inspection dossier. */
+  dossier: MissionDossier;
   /** UI accent colour. */
   color: string;
   model: SpacecraftModel;
@@ -63,6 +78,18 @@ export const SPACECRAFT: readonly Spacecraft[] = [
   {
     id: 'voyager1', name: 'Voyager 1', agency: 'NASA', launched: 1977, color: '#f0cf6a',
     note: 'The farthest human-made object; crossed into interstellar space in 2012.',
+    dossier: {
+      launchDate: '1977-09-05T12:56:00Z',
+      purpose: {
+        en: 'Survey Jupiter, Saturn and their moons, then extend observation beyond the outer planets.',
+        tr: 'Jüpiter, Satürn ve uydularını incelemek; ardından gözlemleri dış gezegenlerin ötesine taşımak.'
+      },
+      milestone: {
+        en: 'Became the most distant human-made object and began the Voyager Interstellar Mission in 1990.',
+        tr: 'İnsan yapımı en uzak nesne oldu ve 1990’da Voyager Yıldızlararası Görevi başladı.'
+      },
+      sourceUrl: 'https://science.nasa.gov/mission/voyager/mission-overview/'
+    },
     model: {
       kind: 'coast',
       posKm: { x: -4.631799230306935e9, y: -2.324857027363158e10, z: 5.13234065157972e9 },
@@ -72,6 +99,18 @@ export const SPACECRAFT: readonly Spacecraft[] = [
   {
     id: 'voyager2', name: 'Voyager 2', agency: 'NASA', launched: 1977, color: '#d6ae52',
     note: 'The only craft to visit all four giant planets; interstellar since 2018.',
+    dossier: {
+      launchDate: '1977-08-20T14:29:44Z',
+      purpose: {
+        en: 'Survey the outer planets and their moons, using the rare giant-planet alignment.',
+        tr: 'Nadir dev gezegen hizalanmasından yararlanarak dış gezegenleri ve uydularını incelemek.'
+      },
+      milestone: {
+        en: 'Remains the only spacecraft to have visited Uranus and Neptune.',
+        tr: 'Uranüs ve Neptün’ü ziyaret etmiş tek uzay aracı olarak kalıyor.'
+      },
+      sourceUrl: 'https://science.nasa.gov/mission/voyager/mission-overview/'
+    },
     model: {
       kind: 'coast',
       posKm: { x: 5.602831338260554e9, y: -8.784856820372715e9, z: -1.736487168105077e10 },
@@ -81,6 +120,18 @@ export const SPACECRAFT: readonly Spacecraft[] = [
   {
     id: 'newhorizons', name: 'New Horizons', agency: 'NASA', launched: 2006, color: '#8fb8e0',
     note: 'Flew past Pluto in 2015 and Arrokoth in 2019; now deep in the Kuiper Belt.',
+    dossier: {
+      launchDate: '2006-01-19T19:00:00Z',
+      purpose: {
+        en: 'Study Pluto, its moons and other objects in the Kuiper Belt.',
+        tr: 'Plüton’u, uydularını ve Kuiper Kuşağı’ndaki diğer cisimleri incelemek.'
+      },
+      milestone: {
+        en: 'Made the first close exploration of Pluto in 2015 and Arrokoth in 2019.',
+        tr: '2015’te Plüton’un, 2019’da ise Arrokoth’un ilk yakın incelemesini gerçekleştirdi.'
+      },
+      sourceUrl: 'https://science.nasa.gov/mission/new-horizons/'
+    },
     model: {
       kind: 'coast',
       posKm: { x: 2.656826580884252e9, y: -7.669092004818518e9, z: -2.998142360366777e9 },
@@ -90,6 +141,18 @@ export const SPACECRAFT: readonly Spacecraft[] = [
   {
     id: 'parker', name: 'Parker Solar Probe', agency: 'NASA', launched: 2018, color: '#ff8a5c',
     note: 'Dives through the Sun’s corona — the fastest object ever built.',
+    dossier: {
+      launchDate: '2018-08-12T07:31:00Z',
+      purpose: {
+        en: 'Sample the solar corona and investigate the solar wind, magnetic fields and energetic particles.',
+        tr: 'Güneş koronası örneklemek; güneş rüzgârını, manyetik alanları ve enerjik parçacıkları incelemek.'
+      },
+      milestone: {
+        en: 'Became the first spacecraft to fly through the Sun’s corona in 2021.',
+        tr: '2021’de Güneş’in koronasından geçen ilk uzay aracı oldu.'
+      },
+      sourceUrl: 'https://science.nasa.gov/mission/parker-solar-probe/'
+    },
     model: {
       kind: 'orbit',
       elements: elementsAtEpoch({
@@ -102,6 +165,18 @@ export const SPACECRAFT: readonly Spacecraft[] = [
   {
     id: 'jwst', name: 'James Webb', agency: 'NASA · ESA · CSA', launched: 2021, color: '#ffd27a',
     note: 'Infrared observatory holding station at the Sun–Earth L2 point.',
+    dossier: {
+      launchDate: '2021-12-25T12:20:00Z',
+      purpose: {
+        en: 'Observe the universe in infrared, from the first galaxies to exoplanets and our own solar system.',
+        tr: 'İlk galaksilerden ötegezegenlere ve kendi Güneş Sistemimize kadar evreni kızılötesinde gözlemek.'
+      },
+      milestone: {
+        en: 'Operates from a halo orbit around the Sun–Earth L2 point, about 1.5 million kilometres beyond Earth.',
+        tr: 'Dünya’nın yaklaşık 1,5 milyon kilometre ötesindeki Güneş–Dünya L2 noktası çevresinde halo yörüngesinde çalışır.'
+      },
+      sourceUrl: 'https://science.nasa.gov/mission/webb/'
+    },
     model: { kind: 'lagrange', offsetAU: 0.01003 }
   }
 ];

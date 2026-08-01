@@ -18,6 +18,7 @@ import { TimeJourneys } from './ui/TimeJourneys';
 import { useFlight } from './flight/useFlight';
 import { SatellitePanel } from './ui/SatellitePanel';
 import { SatelliteInfo } from './ui/SatelliteInfo';
+import { SpacecraftInfo } from './ui/SpacecraftInfo';
 import { useSatelliteSelection } from './scene/satelliteSelection';
 import { useSpacecraftSelection } from './scene/spacecraftSelection';
 import { useSimTime } from './scene/useSimTime';
@@ -44,6 +45,7 @@ function App() {
   const journeysTrigger = useRef<HTMLElement | null>(null);
   const returnToOverview = useFlight((s) => s.returnToOverview);
   const satellite = useSatelliteSelection((s) => s.selected);
+  const spacecraftId = useSpacecraftSelection((s) => s.selectedId);
   const mode = useViewSettings((s) => s.mode);
 
   // A shared link is a specific moment. Restoring it once on load applies the
@@ -101,7 +103,7 @@ function App() {
   useEffect(() => {
     if (!entered) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || atlasOpen || dataHealthOpen || journeysOpen) return;
+      if (event.key !== 'Escape' || atlasOpen || dataHealthOpen || journeysOpen || spacecraftId) return;
 
       const selection = useSatelliteSelection.getState();
       if (selection.selected) {
@@ -119,7 +121,7 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [atlasOpen, dataHealthOpen, entered, journeysOpen, returnToOverview]);
+  }, [atlasOpen, dataHealthOpen, entered, journeysOpen, returnToOverview, spacecraftId]);
 
   const openAtlas = () => {
     atlasTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -151,11 +153,16 @@ function App() {
     window.requestAnimationFrame(() => journeysTrigger.current?.focus());
   };
 
+  const closeSpacecraft = () => {
+    useSpacecraftSelection.getState().clear();
+    returnToOverview();
+  };
+
   return (
     /* Dynamic viewport units: on a phone `100vh` is the tallest the browser
        chrome ever gets, which leaves the scene cropped under the address bar. */
     <div className="relative h-[100dvh] w-screen overflow-hidden bg-black text-white antialiased">
-      <div id="simulation-shell" className="contents" aria-hidden={atlasOpen || dataHealthOpen || journeysOpen || undefined} inert={atlasOpen || dataHealthOpen || journeysOpen || undefined}>
+      <div id="simulation-shell" className="contents" aria-hidden={atlasOpen || dataHealthOpen || journeysOpen || Boolean(spacecraftId) || undefined} inert={atlasOpen || dataHealthOpen || journeysOpen || Boolean(spacecraftId) || undefined}>
       <SceneRoot />
 
       {entered ? (
@@ -182,6 +189,7 @@ function App() {
       {atlasOpen && <ExploreAtlas onClose={closeAtlas} />}
       {dataHealthOpen && <DataHealthPanel onClose={closeDataHealth} />}
       {journeysOpen && <TimeJourneys onClose={closeJourneys} />}
+      {spacecraftId && <SpacecraftInfo craftId={spacecraftId} onClose={closeSpacecraft} />}
     </div>
   );
 }

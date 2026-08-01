@@ -12,6 +12,15 @@ import { DeepSpaceCraftModel } from './SpacecraftModels';
 import { useSpacecraftSelection, writeSpacecraftPosition } from './spacecraftSelection';
 import { useTranslation } from '../ui/i18n';
 
+/** Fixed screen offsets keep the five overview labels from sitting on one another. */
+const LABEL_OFFSETS: Record<string, readonly [number, number]> = {
+  voyager1: [-34, -18],
+  voyager2: [32, 18],
+  newhorizons: [-38, 16],
+  parker: [36, -20],
+  jwst: [0, -42]
+};
+
 /**
  * Live deep-space craft — the Voyagers, New Horizons, Parker and JWST — placed
  * from real trajectory data (see data/spacecraft.ts). Every craft carries a
@@ -52,6 +61,7 @@ function CraftMarker({ craft }: { craft: Craft }) {
   const selectedId = useSpacecraftSelection((state) => state.selectedId);
   const select = useSpacecraftSelection((state) => state.select);
   const { t } = useTranslation();
+  const [labelOffsetX, labelOffsetY] = LABEL_OFFSETS[craft.id] ?? [0, -18];
 
   const inspect = () => {
     select(craft.id);
@@ -124,11 +134,12 @@ function CraftMarker({ craft }: { craft: Craft }) {
         </Suspense>
 
         {phase === 'overview' && selectedId !== craft.id && (
-          <Html position={[0, 1.6, 0]} center distanceFactor={48} zIndexRange={[10, 0]}>
+          <Html position={[0, 1.6, 0]} center zIndexRange={[10, 0]}>
             <button
               type="button"
               onClick={inspect}
               aria-label={t('inspectSpacecraft', { craft: craft.name })}
+              style={{ transform: `translate(${labelOffsetX}px, ${labelOffsetY}px)` }}
               className="flex cursor-pointer flex-col items-center rounded-md px-1.5 py-1 leading-tight transition-colors hover:bg-black/35 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-200/70"
             >
               {labelContent}
@@ -136,13 +147,6 @@ function CraftMarker({ craft }: { craft: Craft }) {
           </Html>
         )}
 
-        {selectedId === craft.id && (
-          <Html position={[0, -2.1, 0]} center zIndexRange={[12, 0]} style={{ pointerEvents: 'none' }}>
-            <div className="whitespace-nowrap rounded-full border border-sky-200/30 bg-black/75 px-2 py-0.5 text-center text-[7px] uppercase tracking-[0.12em] text-sky-100 shadow-lg shadow-black/40 backdrop-blur-md">
-              {craft.name}
-            </div>
-          </Html>
-        )}
       </group>
     </group>
   );
